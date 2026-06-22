@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>TBD Billing</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <header class="desktop-bar">
+      <div class="brand"><span class="brand-mark">T</span> TBD Billing</div>
+      <button class="company-button" id="companyButton" type="button">Company <span>v</span></button>
+      <div class="company-menu" id="companyMenu">
+        <button type="button" data-view="companies">Manage Companies</button>
+        <button type="button" id="addCompanyMenu">+ Add Company</button>
+      </div>
+      <span class="support">Business billing workspace</span>
+    </header>
+
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="current-company" id="currentCompany"></div>
+        <nav>
+          <button class="nav-item active" type="button" data-view="home">Home</button>
+          <button class="nav-item" id="partyNav" type="button" data-view="parties">Parties</button>
+          <button class="nav-child" type="button" data-view="parties">Party Details</button>
+          <button class="nav-item" id="saleNav" type="button" data-view="sale">Sale</button>
+          <button class="nav-child" type="button" data-view="sale">Sale Invoice</button>
+          <button class="nav-child" type="button" data-view="estimate">Estimate / Quotation</button>
+          <button class="nav-item last" type="button" data-view="settings">Settings</button>
+          <button class="nav-child" type="button" data-view="settings">General</button>
+          <button class="nav-child" type="button" data-view="transactions">Transactions</button>
+        </nav>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <input id="search" type="search" placeholder="Search records">
+          <button class="primary" type="button" id="quickInvoice">+ Add Sale Invoice</button>
+        </header>
+
+        <section class="view active" id="homeView" data-title="Home">
+          <div class="heading"><div><p>Overview</p><h1>Home</h1></div></div>
+          <div class="metrics">
+            <article><span>Total Parties</span><strong id="partyMetric">0</strong></article>
+            <article><span>Sale Invoices</span><strong id="invoiceMetric">0</strong></article>
+            <article><span>Invoice Amount</span><strong id="salesMetric">Rs. 0</strong></article>
+            <article><span>Quotations</span><strong id="quoteMetric">0</strong></article>
+          </div>
+          <section class="panel recent"><h2>Recent Transactions</h2><div id="homeTransactions"></div></section>
+        </section>
+
+        <section class="view" id="companiesView" data-title="Company">
+          <div class="heading"><div><p>Company</p><h1>Manage Companies</h1></div><button class="primary" type="button" id="addCompany">+ Add Company</button></div>
+          <div class="split">
+            <form class="panel form hidden" id="companyForm">
+              <h2 id="companyFormTitle">Add Company</h2>
+              <label>Company Name<input id="companyName" required></label>
+              <label>GSTIN<input id="companyGstin"></label>
+              <label>Phone<input id="companyPhone"></label>
+              <label>Address Line 1<input id="companyAddressLine1"></label>
+              <label>Address Line 2<input id="companyAddressLine2"></label>
+              <div class="two"><label>City<input id="companyCity"></label><label>State<input id="companyState" value="Tamil Nadu"></label></div>
+              <label>Pincode<input id="companyPincode" inputmode="numeric"></label>
+              <label>Bank Name<input id="companyBankName" placeholder="Bank name"></label>
+              <div class="two"><label>Account Number<input id="companyAccountNumber"></label><label>IFSC Code<input id="companyIfscCode"></label></div>
+              <label>Terms & Conditions<textarea id="companyTerms" rows="4" placeholder="Thanks for doing business with us."></textarea></label>
+              <button class="primary" type="submit">Save Company</button>
+            </form>
+            <div class="panel company-list-wrap"><h2>Companies</h2><div id="companyList"></div></div>
+          </div>
+        </section>
+
+        <section class="view" id="partiesView" data-title="Parties">
+          <div class="heading"><div><p>Parties</p><h1>Party Details</h1></div><button class="primary" type="button" id="showPartyForm">+ Add Party</button></div>
+          <div class="split">
+            <form class="panel form hidden" id="partyForm">
+              <h2>Add Party Details</h2>
+              <label>Party Name<input id="partyName" required></label>
+              <label>Phone<input id="partyPhone"></label>
+              <label>GSTIN<input id="partyGstin"></label>
+              <label>Address Line 1<input id="partyAddressLine1"></label>
+              <label>Address Line 2<input id="partyAddressLine2"></label>
+              <div class="two"><label>City<input id="partyCity"></label><label>State<input id="partyState" value="Tamil Nadu"></label></div>
+              <label>Pincode<input id="partyPincode" inputmode="numeric"></label>
+              <button class="primary" type="submit">Save Party</button>
+            </form>
+            <div class="panel list-panel"><div class="panel-title"><h2>Party Details</h2><span id="partyCount"></span></div><div id="partyList"></div></div>
+          </div>
+        </section>
+
+        <section class="view" id="saleView" data-title="Sale Invoice">
+          <div class="heading"><div><p>Sale</p><h1>Sale Invoice</h1></div><button class="primary" type="button" id="showInvoiceForm">+ Add Sale Invoice</button></div>
+          <div class="split">
+            <form class="panel form hidden" id="invoiceForm">
+              <h2>Create Sale Invoice</h2>
+              <label>Party<select id="invoiceParty"></select></label>
+              <label>Item / Service<input id="invoiceItem" required></label>
+              <div class="two"><label>HSN / SAC<input id="invoiceHsn" placeholder="998386"></label><label>Size<input id="invoiceSize" placeholder="30 x 25"></label></div>
+              <div class="two"><label>Quantity<input id="invoiceQty" type="number" min="1" value="1"></label><label>Rate<input id="invoiceRate" type="number" min="0" value="0"></label></div>
+              <div class="two"><label>Unit<select id="invoiceUnit"><option>Sq. Feet</option><option>Nos</option><option>Kg</option></select></label><label>GST %<input id="invoiceTax" type="number" min="0" value="18"></label></div>
+              <label>Tax Type<select id="invoiceTaxType"><option value="auto">Auto (based on Party State)</option><option value="cgst-sgst">CGST + SGST</option><option value="igst">IGST</option></select></label>
+              <div class="calculation"><span id="invoiceArea">Area: 0 Sq. Ft</span><strong id="invoiceAmount">Amount: Rs. 0.00</strong></div>
+              <label>Invoice Date<input id="invoiceDate" type="date"></label>
+              <button class="primary" type="submit">Save Invoice</button>
+            </form>
+            <div class="panel list-panel"><div class="panel-title"><h2>Sale Invoices</h2><span id="invoiceCount"></span></div><div class="table-wrap"><table><thead><tr><th>Invoice No</th><th>Date</th><th>Party</th><th>Item</th><th class="right">Amount</th><th>Action</th></tr></thead><tbody id="invoiceList"></tbody></table></div></div>
+          </div>
+        </section>
+
+        <section class="view" id="estimateView" data-title="Estimate / Quotation">
+          <div class="heading"><div><p>Sale</p><h1>Estimate / Quotation</h1></div><button class="primary" type="button" id="showQuoteForm">+ Add Estimate</button></div>
+          <div class="split">
+            <form class="panel form hidden" id="quoteForm">
+              <h2>Create Estimate</h2>
+              <label>Party<select id="quoteParty"></select></label>
+              <label>Item / Service<input id="quoteItem" required></label>
+              <div class="two"><label>HSN / SAC<input id="quoteHsn" placeholder="998386"></label><label>Size<input id="quoteSize" placeholder="30 x 25"></label></div>
+              <div class="two"><label>Quantity<input id="quoteQty" type="number" min="1" value="1"></label><label>Rate<input id="quoteRate" type="number" min="0" value="0"></label></div>
+              <div class="two"><label>Unit<select id="quoteUnit"><option>Sq. Feet</option><option>Nos</option><option>Kg</option></select></label><label>GST %<input id="quoteTax" type="number" min="0" value="18"></label></div>
+              <label>Tax Type<select id="quoteTaxType"><option value="auto">Auto (based on Party State)</option><option value="cgst-sgst">CGST + SGST</option><option value="igst">IGST</option></select></label>
+              <div class="calculation"><span id="quoteArea">Area: 0 Sq. Ft</span><strong id="quoteAmount">Amount: Rs. 0.00</strong></div>
+              <label>Estimate Date<input id="quoteDate" type="date"></label>
+              <button class="primary" type="submit">Save Estimate</button>
+            </form>
+            <div class="panel list-panel"><div class="panel-title"><h2>Estimates / Quotations</h2><span id="quoteCount"></span></div><div class="table-wrap"><table><thead><tr><th>Estimate No</th><th>Date</th><th>Party</th><th>Item</th><th class="right">Amount</th><th>Action</th></tr></thead><tbody id="quoteList"></tbody></table></div></div>
+          </div>
+        </section>
+
+        <section class="view" id="settingsView" data-title="Settings">
+          <div class="heading"><div><p>Settings</p><h1>General</h1></div></div>
+          <form class="panel form settings-form" id="settingsForm">
+            <h2>General Settings</h2>
+            <label>Default Invoice Prefix<input id="invoicePrefix" required></label>
+            <label>Default Estimate Prefix<input id="quotePrefix" required></label>
+            <label>Currency<input id="currency" required></label>
+            <label>Bank Name<input id="bankName" placeholder="Bank name"></label>
+            <div class="two"><label>Account Number<input id="accountNumber"></label><label>IFSC Code<input id="ifscCode"></label></div>
+            <button class="primary" type="submit">Save General Settings</button>
+          </form>
+        </section>
+
+        <section class="view" id="transactionsView" data-title="Transactions">
+          <div class="heading"><div><p>Settings</p><h1>Transactions</h1></div></div>
+          <section class="panel list-panel"><div class="panel-title"><h2>Transaction History</h2></div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Reference</th><th>Party</th><th class="right">Amount</th></tr></thead><tbody id="transactionList"></tbody></table></div></section>
+        </section>
+      </main>
+    </div>
+    <section class="document-overlay" id="documentOverlay" aria-hidden="true">
+      <div class="document-actions">
+        <button type="button" id="closeDocument">Close</button>
+        <button class="primary" type="button" id="printDocument">Print</button>
+      </div>
+      <article class="document-sheet" id="printDocumentContent"></article>
+    </section>
+    <div class="toast" id="toast"></div>
+    <script src="app.js"></script>
+  </body>
+</html>
