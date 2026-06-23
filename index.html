@@ -5,6 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>TBD Billing</title>
     <link rel="stylesheet" href="styles.css">
+    <style>
+      .transaction-form { background:#fff; border:1px solid #dce5ed; border-radius:6px; overflow:hidden; margin-bottom:8px; }
+      .transaction-head { min-height:78px; display:flex; justify-content:space-between; align-items:center; padding:0 20px; border-bottom:1px solid #e6ebf0; }
+      .transaction-head p { margin:0 0 4px; color:#7b879e; font-size:12px; }.transaction-head h1 { margin:0; font-size:23px; }
+      .payment-switch { display:flex; gap:16px; align-items:center; color:#6d7891; }.payment-switch b { color:#253454; }
+      .transaction-meta { display:grid; grid-template-columns:2fr 1fr 1fr 1fr; gap:20px; padding:25px 20px 34px; }
+      .entry-table { border-top:1px solid #dce5ed; }.entry-labels,.entry-inputs { display:grid; grid-template-columns:38px 2.4fr 1fr 1fr 70px 110px 110px 80px 130px; min-width:1040px; }
+      .entry-labels { background:#f7f9fb; color:#5d6b83; font-size:12px; font-weight:800; text-transform:uppercase; }.entry-labels span { padding:12px 8px; border-right:1px solid #e1e6eb; }
+      .entry-inputs { align-items:center; border-top:1px solid #e1e6eb; }.entry-inputs>* { min-width:0; height:56px; border:0; border-right:1px solid #e1e6eb; border-radius:0; padding:0 8px; box-shadow:none!important; }.entry-inputs span,.entry-inputs strong { display:grid; place-items:center; font-size:13px; }.entry-total { display:flex; align-items:center; gap:28px; min-height:60px; padding:0 20px; border-top:1px solid #e1e6eb; }.entry-total button,.secondary { border:1px solid #9fc6f4; color:#0873e6; background:#fff; border-radius:4px; padding:8px 12px; font-weight:700; }.entry-total strong { margin-left:auto; }
+      .transaction-notes { display:grid; grid-template-columns:1fr 1fr; gap:25px; padding:22px 20px; border-top:1px solid #e1e6eb; }.transaction-notes textarea { height:72px; min-height:72px; }.transaction-footer { display:flex; justify-content:flex-end; gap:12px; padding:16px 20px; border-top:1px solid #e1e6eb; background:#fafcff; }
+      #partyForm:not(.hidden) { position:fixed; z-index:20; inset:56px 12vw auto 12vw; max-height:82vh; overflow:auto; padding:28px; background:#fff; border-radius:8px; box-shadow:0 24px 70px #13213c66; grid-template-columns:repeat(3,minmax(0,1fr)); }.party-modal-backdrop { display:none; }
+      #partyForm:not(.hidden) h2 { grid-column:1/-1; }.party-form-close { display:none; }
+      @media(max-width:1000px){.transaction-meta{grid-template-columns:1fr 1fr}.entry-table{overflow:auto}.transaction-notes{grid-template-columns:1fr}#partyForm:not(.hidden){inset:20px;grid-template-columns:1fr 1fr}}
+      .reference-doc-title{text-align:center;font-size:17px;margin:0 0 8px}.reference-company{display:flex;justify-content:space-between;align-items:flex-start;padding:10px;border:1px solid #777}.reference-company>div:last-child{text-align:right}.reference-company h1{margin:0 0 6px;font-size:21px}.reference-company p,.reference-meta p,.reference-footer p{margin:4px 0}.logo-box,.signature-box{width:70px;height:70px;display:grid;place-items:center;background:#ddd;color:#777;font-weight:800}.reference-meta{display:grid;grid-template-columns:1.15fr 1.15fr .8fr;border-left:1px solid #777}.reference-meta section{min-height:135px;padding:8px;border-right:1px solid #777;border-bottom:1px solid #777}.reference-meta h3,.reference-words h3,.reference-footer h3{margin:-8px -8px 8px;padding:6px 8px;background:#928add;color:#fff;font-size:12px}.reference-items,.reference-lower table{width:100%;min-width:0;border-collapse:collapse}.reference-items th,.reference-items td,.reference-lower th,.reference-lower td{padding:6px;border:1px solid #777;text-align:right}.reference-items th,.reference-lower th{background:#928add;color:#fff;font-size:11px}.reference-items th:nth-child(2),.reference-items td:nth-child(2),.reference-lower th:first-child,.reference-lower td:first-child{text-align:left}.reference-items small{display:block;margin-top:4px}.reference-lower{display:grid;grid-template-columns:1fr 1fr}.reference-words{display:grid;grid-template-columns:1fr 1fr;border:1px solid #777;border-top:0}.reference-words section,.reference-footer section{padding:8px;border-right:1px solid #777}.reference-words section:last-child,.reference-footer section:last-child{border-right:0;text-align:center}.reference-footer{display:grid;grid-template-columns:1fr 1fr 1fr;border:1px solid #777;border-top:0;min-height:150px}.reference-footer h3{margin:-8px -8px 8px}.reference-footer .signature-box{margin:12px auto}.reference-footer b{display:block;text-align:center}
+    </style>
   </head>
   <body>
     <header class="desktop-bar">
@@ -35,7 +50,7 @@
 
       <main class="workspace">
         <header class="topbar">
-          <input id="search" type="search" placeholder="Search records">
+          <input id="search" type="search" placeholder="Search records" style="position:static;width:min(460px,60%);opacity:1;border:0;background:transparent;box-shadow:none;font-size:18px">
           <button class="primary" type="button" id="quickInvoice">+ Add Sale Invoice</button>
         </header>
 
@@ -90,41 +105,23 @@
         </section>
 
         <section class="view" id="saleView" data-title="Sale Invoice">
-          <div class="heading"><div><p>Sale</p><h1>Sale Invoice</h1></div><button class="primary" type="button" id="showInvoiceForm">+ Add Sale Invoice</button></div>
-          <div class="split">
-            <form class="panel form hidden" id="invoiceForm">
-              <h2>Create Sale Invoice</h2>
-              <label>Party<select id="invoiceParty"></select></label>
-              <label>Item / Service<input id="invoiceItem" required></label>
-              <div class="two"><label>HSN / SAC<input id="invoiceHsn" placeholder="998386"></label><label>Size<input id="invoiceSize" placeholder="30 x 25"></label></div>
-              <div class="two"><label>Quantity<input id="invoiceQty" type="number" min="1" value="1"></label><label>Rate<input id="invoiceRate" type="number" min="0" value="0"></label></div>
-              <div class="two"><label>Unit<select id="invoiceUnit"><option>Sq. Feet</option><option>Nos</option><option>Kg</option></select></label><label>GST %<input id="invoiceTax" type="number" min="0" value="18"></label></div>
-              <label>Tax Type<select id="invoiceTaxType"><option value="auto">Auto (based on Party State)</option><option value="cgst-sgst">CGST + SGST</option><option value="igst">IGST</option></select></label>
-              <div class="calculation"><span id="invoiceArea">Area: 0 Sq. Ft</span><strong id="invoiceAmount">Amount: Rs. 0.00</strong></div>
-              <label>Invoice Date<input id="invoiceDate" type="date"></label>
-              <button class="primary" type="submit">Save Invoice</button>
-            </form>
-            <div class="panel list-panel"><div class="panel-title"><h2>Sale Invoices</h2><span id="invoiceCount"></span></div><div class="table-wrap"><table><thead><tr><th>Invoice No</th><th>Date</th><th>Party</th><th>Item</th><th class="right">Amount</th><th>Action</th></tr></thead><tbody id="invoiceList"></tbody></table></div></div>
-          </div>
+          <form class="transaction-form" id="invoiceForm">
+            <div class="transaction-head"><div><p>Sale #</p><h1>Sale Invoice</h1></div><div class="payment-switch"><span>Credit</span><b>Cash</b></div></div>
+            <div class="transaction-meta"><label>Search by Name / Phone<select id="invoiceParty"></select></label><label>Invoice Number<input value="Auto" readonly></label><label>Invoice Date<input id="invoiceDate" type="date"></label><label>State of Supply<select id="invoiceTaxType"><option value="auto">Auto</option><option value="cgst-sgst">Same State</option><option value="igst">Other State (IGST)</option></select></label></div>
+            <div class="entry-table"><div class="entry-labels"><span>#</span><span>Item</span><span>HSN / SAC</span><span>Size</span><span>Qty</span><span>Unit</span><span>Rate</span><span>Tax %</span><span>Amount</span></div><div class="entry-inputs"><span>1</span><input id="invoiceItem" required placeholder="Add item or service"><input id="invoiceHsn" placeholder="998386"><input id="invoiceSize" placeholder="30 x 25"><input id="invoiceQty" type="number" min="1" value="1"><select id="invoiceUnit"><option>Sq. Feet</option><option>Nos</option><option>Kg</option></select><input id="invoiceRate" type="number" min="0" value="0"><input id="invoiceTax" type="number" min="0" value="18"><strong id="invoiceAmount">Rs. 0.00</strong></div><div class="entry-total"><button type="button">+ Add Row</button><span id="invoiceArea">Area: 0 Sq. Ft</span><strong>Total: <b id="invoiceTotal">Rs. 0.00</b></strong></div></div>
+            <div class="transaction-notes"><label>Terms & Conditions<textarea placeholder="Add terms and conditions"></textarea></label><label>Description<textarea placeholder="Add description"></textarea></label></div><div class="transaction-footer"><button class="secondary" type="button">Share</button><button class="primary" type="submit">Save Invoice</button></div>
+          </form>
+          <section class="panel list-panel"><div class="panel-title"><h2>Sale Invoices</h2><span id="invoiceCount"></span></div><div class="table-wrap"><table><thead><tr><th>Invoice No</th><th>Date</th><th>Party</th><th>Item</th><th class="right">Amount</th><th>Action</th></tr></thead><tbody id="invoiceList"></tbody></table></div></section>
         </section>
 
         <section class="view" id="estimateView" data-title="Estimate / Quotation">
-          <div class="heading"><div><p>Sale</p><h1>Estimate / Quotation</h1></div><button class="primary" type="button" id="showQuoteForm">+ Add Estimate</button></div>
-          <div class="split">
-            <form class="panel form hidden" id="quoteForm">
-              <h2>Create Estimate</h2>
-              <label>Party<select id="quoteParty"></select></label>
-              <label>Item / Service<input id="quoteItem" required></label>
-              <div class="two"><label>HSN / SAC<input id="quoteHsn" placeholder="998386"></label><label>Size<input id="quoteSize" placeholder="30 x 25"></label></div>
-              <div class="two"><label>Quantity<input id="quoteQty" type="number" min="1" value="1"></label><label>Rate<input id="quoteRate" type="number" min="0" value="0"></label></div>
-              <div class="two"><label>Unit<select id="quoteUnit"><option>Sq. Feet</option><option>Nos</option><option>Kg</option></select></label><label>GST %<input id="quoteTax" type="number" min="0" value="18"></label></div>
-              <label>Tax Type<select id="quoteTaxType"><option value="auto">Auto (based on Party State)</option><option value="cgst-sgst">CGST + SGST</option><option value="igst">IGST</option></select></label>
-              <div class="calculation"><span id="quoteArea">Area: 0 Sq. Ft</span><strong id="quoteAmount">Amount: Rs. 0.00</strong></div>
-              <label>Estimate Date<input id="quoteDate" type="date"></label>
-              <button class="primary" type="submit">Save Estimate</button>
-            </form>
-            <div class="panel list-panel"><div class="panel-title"><h2>Estimates / Quotations</h2><span id="quoteCount"></span></div><div class="table-wrap"><table><thead><tr><th>Estimate No</th><th>Date</th><th>Party</th><th>Item</th><th class="right">Amount</th><th>Action</th></tr></thead><tbody id="quoteList"></tbody></table></div></div>
-          </div>
+          <form class="transaction-form" id="quoteForm">
+            <div class="transaction-head"><div><p>Estimate #</p><h1>Estimate / Quotation</h1></div></div>
+            <div class="transaction-meta"><label>Search by Name / Phone<select id="quoteParty"></select></label><label>Reference No<input value="Auto" readonly></label><label>Estimate Date<input id="quoteDate" type="date"></label><label>State of Supply<select id="quoteTaxType"><option value="auto">Auto</option><option value="cgst-sgst">Same State</option><option value="igst">Other State (IGST)</option></select></label></div>
+            <div class="entry-table"><div class="entry-labels"><span>#</span><span>Item</span><span>HSN / SAC</span><span>Size</span><span>Qty</span><span>Unit</span><span>Rate</span><span>Tax %</span><span>Amount</span></div><div class="entry-inputs"><span>1</span><input id="quoteItem" required placeholder="Add item or service"><input id="quoteHsn" placeholder="998386"><input id="quoteSize" placeholder="30 x 25"><input id="quoteQty" type="number" min="1" value="1"><select id="quoteUnit"><option>Sq. Feet</option><option>Nos</option><option>Kg</option></select><input id="quoteRate" type="number" min="0" value="0"><input id="quoteTax" type="number" min="0" value="18"><strong id="quoteAmount">Rs. 0.00</strong></div><div class="entry-total"><button type="button">+ Add Row</button><span id="quoteArea">Area: 0 Sq. Ft</span><strong>Total: <b id="quoteTotal">Rs. 0.00</b></strong></div></div>
+            <div class="transaction-notes"><label>Terms & Conditions<textarea placeholder="Add terms and conditions"></textarea></label><label>Description<textarea placeholder="Add description"></textarea></label></div><div class="transaction-footer"><button class="secondary" type="button">Share</button><button class="primary" type="submit">Save Estimate</button></div>
+          </form>
+          <section class="panel list-panel"><div class="panel-title"><h2>Estimates / Quotations</h2><span id="quoteCount"></span></div><div class="table-wrap"><table><thead><tr><th>Estimate No</th><th>Date</th><th>Party</th><th>Item</th><th class="right">Amount</th><th>Action</th></tr></thead><tbody id="quoteList"></tbody></table></div></section>
         </section>
 
         <section class="view" id="settingsView" data-title="Settings">
