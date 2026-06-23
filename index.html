@@ -17,8 +17,17 @@
       .transaction-notes { display:grid; grid-template-columns:1fr 1fr; gap:25px; padding:22px 20px; border-top:1px solid #e1e6eb; }.transaction-notes textarea { height:72px; min-height:72px; }.transaction-footer { display:flex; justify-content:flex-end; gap:12px; padding:16px 20px; border-top:1px solid #e1e6eb; background:#fafcff; }
       #partyForm:not(.hidden) { position:fixed; z-index:20; inset:56px 12vw auto 12vw; max-height:82vh; overflow:auto; padding:28px; background:#fff; border-radius:8px; box-shadow:0 24px 70px #13213c66; grid-template-columns:repeat(3,minmax(0,1fr)); }.party-modal-backdrop { display:none; }
       #partyForm:not(.hidden) h2 { grid-column:1/-1; }.party-form-close { display:none; }
+      #partyForm:not(.hidden) { grid-template-columns:repeat(3,minmax(0,1fr)); }.party-modal-title { grid-column:1/-1; display:flex; align-items:center; justify-content:space-between; padding-bottom:14px; border-bottom:1px solid #e3e8ef; }.party-modal-title p { margin:0 0 4px; color:#75829a; font-size:12px; text-transform:uppercase; }.party-modal-title h2 { margin:0!important; }.party-modal-title button { border:0; background:#f3f6fa; color:#64718a; border-radius:4px; padding:8px 12px; }.party-address { grid-column:2/4; grid-row:2/5; }.party-address textarea { height:170px; }.party-actions { grid-column:1/-1; display:flex; justify-content:flex-end; gap:12px; padding-top:16px; border-top:1px solid #e3e8ef; }
       @media(max-width:1000px){.transaction-meta{grid-template-columns:1fr 1fr}.entry-table{overflow:auto}.transaction-notes{grid-template-columns:1fr}#partyForm:not(.hidden){inset:20px;grid-template-columns:1fr 1fr}}
       .reference-doc-title{text-align:center;font-size:17px;margin:0 0 8px}.reference-company{display:flex;justify-content:space-between;align-items:flex-start;padding:10px;border:1px solid #777}.reference-company>div:last-child{text-align:right}.reference-company h1{margin:0 0 6px;font-size:21px}.reference-company p,.reference-meta p,.reference-footer p{margin:4px 0}.logo-box,.signature-box{width:70px;height:70px;display:grid;place-items:center;background:#ddd;color:#777;font-weight:800}.reference-meta{display:grid;grid-template-columns:1.15fr 1.15fr .8fr;border-left:1px solid #777}.reference-meta section{min-height:135px;padding:8px;border-right:1px solid #777;border-bottom:1px solid #777}.reference-meta h3,.reference-words h3,.reference-footer h3{margin:-8px -8px 8px;padding:6px 8px;background:#928add;color:#fff;font-size:12px}.reference-items,.reference-lower table{width:100%;min-width:0;border-collapse:collapse}.reference-items th,.reference-items td,.reference-lower th,.reference-lower td{padding:6px;border:1px solid #777;text-align:right}.reference-items th,.reference-lower th{background:#928add;color:#fff;font-size:11px}.reference-items th:nth-child(2),.reference-items td:nth-child(2),.reference-lower th:first-child,.reference-lower td:first-child{text-align:left}.reference-items small{display:block;margin-top:4px}.reference-lower{display:grid;grid-template-columns:1fr 1fr}.reference-words{display:grid;grid-template-columns:1fr 1fr;border:1px solid #777;border-top:0}.reference-words section,.reference-footer section{padding:8px;border-right:1px solid #777}.reference-words section:last-child,.reference-footer section:last-child{border-right:0;text-align:center}.reference-footer{display:grid;grid-template-columns:1fr 1fr 1fr;border:1px solid #777;border-top:0;min-height:150px}.reference-footer h3{margin:-8px -8px 8px}.reference-footer .signature-box{margin:12px auto}.reference-footer b{display:block;text-align:center}
+      .transaction-form{box-shadow:0 10px 24px rgba(35,52,84,.08)}.transaction-head{background:#fcfdff}.transaction-meta{background:linear-gradient(#fff,#fbfcff)}.transaction-meta label{font-size:12px;color:#66758e}.transaction-meta input,.transaction-meta select{border-color:#d7e0ea}.entry-labels{background:#eef3f8;color:#4f617d}.entry-labels span{padding:14px 9px}.entry-inputs{background:#fff}.entry-inputs input:focus,.entry-inputs select:focus{position:relative;z-index:1;background:#f5f9ff}.entry-total{background:#f9fbfd}.entry-total strong{font-size:15px}.entry-total b{color:#ef1745}.transaction-notes{background:#fff}.transaction-footer{position:sticky;bottom:0;z-index:2;box-shadow:0 -4px 14px rgba(32,50,80,.05)}#partyForm:not(.hidden){border:1px solid #d8e3ee;box-shadow:0 30px 80px rgba(20,34,59,.35)}.party-modal-title{background:#fbfcfe;margin:-28px -28px 6px;padding:20px 28px}.party-modal-title h2{font-size:23px}.party-actions{margin:0 -28px -28px;padding:16px 28px;background:#fbfcfe}.party-address textarea{border-color:#d6e1eb}.party-address textarea:focus{border-color:#4b9afa}.list-panel{box-shadow:0 6px 18px rgba(35,52,84,.04)}
+      .sidebar-top{position:relative}.sidebar-toggle{position:absolute;right:12px;top:14px;width:28px;height:28px;border:1px solid rgba(255,255,255,.18);border-radius:5px;background:#333660;color:#fff;font-weight:800;z-index:2}.sidebar-collapsed{grid-template-columns:78px minmax(0,1fr)}.sidebar-collapsed .sidebar{padding-top:10px}.sidebar-collapsed .current-company{margin:0 10px 14px;padding:8px;justify-content:center;background:transparent}.sidebar-collapsed .current-company>div{display:none}.sidebar-collapsed .sidebar-toggle{right:24px;top:45px}.sidebar-collapsed .nav-item,.sidebar-collapsed .nav-child{min-height:46px;padding:0;text-align:center;font-size:0}.sidebar-collapsed .nav-item:before{width:auto;font-size:19px}.sidebar-collapsed .nav-child{display:none}.sidebar-collapsed .nav-item.last{margin-top:10px}.sidebar-collapsed .nav-item[title="Parties"]:before{content:"P"}.sidebar-collapsed .nav-item[title="Sale"]:before{content:"S"}.sidebar-collapsed .nav-item[title="Settings"]:before{content:"o"}.sidebar-collapsed .nav-item:hover:after{content:attr(title);position:absolute;left:84px;margin-top:-10px;padding:7px 9px;border-radius:4px;background:#1b1f42;color:#fff;font-size:12px;box-shadow:0 8px 16px rgba(0,0,0,.22);z-index:20}.sidebar-collapsed .sidebar nav{margin-top:20px}@media(max-width:900px){.sidebar-collapsed{grid-template-columns:1fr}.sidebar-collapsed .current-company>div{display:block}.sidebar-collapsed .nav-item,.sidebar-collapsed .nav-child{font-size:13px}.sidebar-collapsed .nav-child{display:block}.sidebar-collapsed .sidebar-toggle{right:12px;top:8px}}
+      .open-anything{width:calc(100% - 28px);height:42px;margin:0 14px 13px;border:0;border-radius:22px;background:#292c56;color:#dbe2f7;text-align:left;padding:0 17px}.nav-item{position:relative}.nav-item:not(:first-child):after{content:"+";position:absolute;right:21px;color:#e8edff;font-size:21px;font-weight:400}.nav-item.active:not(:first-child):after{content:"-"}.sale-children,.party-children,.settings-children{display:none}.sale-children.open,.party-children.open,.settings-children.open{display:grid}.sale-children.open .nav-child,.party-children.open .nav-child,.settings-children.open .nav-child{display:block}.sale-children.open + .nav-item{margin-top:8px}.sidebar-collapsed .sale-children,.sidebar-collapsed .party-children,.sidebar-collapsed .settings-children,.sidebar-collapsed .open-anything{display:none!important}
+      .record-actions{display:flex;gap:7px}.delete-button{border:1px solid #f5c9d2;border-radius:4px;background:#fff7f8;color:#d9163f;padding:7px 9px;font-size:12px;font-weight:700;margin-left:6px}.delete-button:hover{background:#feecef}
+      .extra-entry-row{border-top:1px solid #e1e6eb}.remove-row{border:0!important;background:#fff1f3!important;color:#d9163f!important;font-weight:800;cursor:pointer}
+      .logo-upload{align-content:start}.logo-upload input{padding:8px}.logo-upload span{display:grid;place-items:center;width:96px;height:72px;border:1px dashed #8db9e9;border-radius:6px;background:#f5faff;color:#4473a8;overflow:hidden}.logo-upload img{width:100%;height:100%;object-fit:contain}.sidebar-logo-image,.company-list-logo{width:100%;height:100%;object-fit:contain;border-radius:inherit}.document-watermark{position:absolute;z-index:0;top:50%;left:50%;width:55%;max-height:55%;object-fit:contain;opacity:.06;transform:translate(-50%,-50%);pointer-events:none}.reference-doc-title,.reference-company,.reference-meta,.reference-items,.reference-lower,.reference-words,.reference-footer{position:relative;z-index:1}.document-logo{width:100%;height:100%;object-fit:contain}.signature-box{overflow:hidden;background:#f2f2f2}.document-sheet{position:relative;overflow:hidden}@media print{.document-watermark{opacity:.055}}
+      .document-actions select,.document-actions #downloadDocument{min-height:36px;padding:0 12px;border:0;border-radius:5px;background:#fff;color:#253454;font-weight:700}.document-actions #downloadDocument{background:#e7f2ff;color:#0873e6}
+      @media print{html,body,.document-sheet,.document-sheet *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.reference-meta h3,.reference-words h3,.reference-footer h3,.reference-items th,.reference-lower th{background:#928add!important;color:#fff!important}.document-watermark{opacity:.06!important}}
     </style>
   </head>
   <body>
@@ -34,17 +43,24 @@
 
     <div class="app-shell">
       <aside class="sidebar">
-        <div class="current-company" id="currentCompany"></div>
+        <div class="sidebar-top"><div class="current-company" id="currentCompany"></div><button class="sidebar-toggle" id="sidebarToggle" type="button" title="Collapse sidebar" aria-label="Collapse sidebar">&lt;</button></div>
+        <button class="open-anything" type="button">Open Anything (Ctrl+F)</button>
         <nav>
-          <button class="nav-item active" type="button" data-view="home">Home</button>
-          <button class="nav-item" id="partyNav" type="button" data-view="parties">Parties</button>
-          <button class="nav-child" type="button" data-view="parties">Party Details</button>
-          <button class="nav-item" id="saleNav" type="button" data-view="sale">Sale</button>
-          <button class="nav-child" type="button" data-view="sale">Sale Invoice</button>
-          <button class="nav-child" type="button" data-view="estimate">Estimate / Quotation</button>
-          <button class="nav-item last" type="button" data-view="settings">Settings</button>
-          <button class="nav-child" type="button" data-view="settings">General</button>
-          <button class="nav-child" type="button" data-view="transactions">Transactions</button>
+          <button class="nav-item active" type="button" data-view="home" title="Home">Home</button>
+          <button class="nav-item" id="partyNav" type="button" title="Parties">Parties</button>
+          <div class="party-children" id="partyChildren">
+            <button class="nav-child" type="button" data-view="parties" title="Party Details">Party Details</button>
+          </div>
+          <button class="nav-item" id="saleNav" type="button" title="Sale">Sale</button>
+          <div class="sale-children" id="saleChildren">
+            <button class="nav-child" type="button" data-view="sale" title="Sale Invoice">Sale Invoice</button>
+            <button class="nav-child" type="button" data-view="estimate" title="Estimate / Quotation">Estimate / Quotation</button>
+          </div>
+          <button class="nav-item last" id="settingsNav" type="button" title="Settings">Settings</button>
+          <div class="settings-children" id="settingsChildren">
+            <button class="nav-child" type="button" data-view="settings" title="General">General</button>
+            <button class="nav-child" type="button" data-view="transactions" title="Transactions">Transactions</button>
+          </div>
         </nav>
       </aside>
 
@@ -71,6 +87,7 @@
             <form class="panel form hidden" id="companyForm">
               <h2 id="companyFormTitle">Add Company</h2>
               <label>Company Name<input id="companyName" required></label>
+              <label class="logo-upload">Company Logo<input id="companyLogoFile" type="file" accept="image/*"><span id="companyLogoPreview">Add Logo</span></label>
               <label>GSTIN<input id="companyGstin"></label>
               <label>Phone<input id="companyPhone"></label>
               <label>Address Line 1<input id="companyAddressLine1"></label>
@@ -79,7 +96,6 @@
               <label>Pincode<input id="companyPincode" inputmode="numeric"></label>
               <label>Bank Name<input id="companyBankName" placeholder="Bank name"></label>
               <div class="two"><label>Account Number<input id="companyAccountNumber"></label><label>IFSC Code<input id="companyIfscCode"></label></div>
-              <label>Terms & Conditions<textarea id="companyTerms" rows="4" placeholder="Thanks for doing business with us."></textarea></label>
               <button class="primary" type="submit">Save Company</button>
             </form>
             <div class="panel company-list-wrap"><h2>Companies</h2><div id="companyList"></div></div>
@@ -90,15 +106,16 @@
           <div class="heading"><div><p>Parties</p><h1>Party Details</h1></div><button class="primary" type="button" id="showPartyForm">+ Add Party</button></div>
           <div class="split">
             <form class="panel form hidden" id="partyForm">
-              <h2>Add Party Details</h2>
-              <label>Party Name<input id="partyName" required></label>
-              <label>Phone<input id="partyPhone"></label>
-              <label>GSTIN<input id="partyGstin"></label>
-              <label>Address Line 1<input id="partyAddressLine1"></label>
-              <label>Address Line 2<input id="partyAddressLine2"></label>
-              <div class="two"><label>City<input id="partyCity"></label><label>State<input id="partyState" value="Tamil Nadu"></label></div>
-              <label>Pincode<input id="partyPincode" inputmode="numeric"></label>
-              <button class="primary" type="submit">Save Party</button>
+              <div class="party-modal-title"><div><p>Parties</p><h2>Add Party</h2></div><button type="button" id="closePartyForm">Close</button></div>
+              <label>Party Name *<input id="partyName" required autofocus></label>
+              <label>GSTIN<input id="partyGstin" placeholder="Enter GSTIN"></label>
+              <label>Phone Number<input id="partyPhone" inputmode="tel" placeholder="Enter phone number"></label>
+              <label>GST Type<select id="partyGstType"><option>Unregistered / Consumer</option><option>Registered Business</option></select></label>
+              <label>State<select id="partyState"><option>Tamil Nadu</option><option>Kerala</option><option>Karnataka</option><option>Andhra Pradesh</option><option>Telangana</option><option>Other State</option></select></label>
+              <label>Email ID<input id="partyEmail" type="email" placeholder="Enter email ID"></label>
+              <label class="party-address">Billing Address<textarea id="partyAddressLine1" placeholder="House / street / area"></textarea></label>
+              <input id="partyAddressLine2" type="hidden"><input id="partyCity" type="hidden"><input id="partyPincode" type="hidden">
+              <div class="party-actions"><button class="secondary" type="button" id="savePartyNew">Save & New</button><button class="primary" type="submit">Save Party</button></div>
             </form>
             <div class="panel list-panel"><div class="panel-title"><h2>Party Details</h2><span id="partyCount"></span></div><div id="partyList"></div></div>
           </div>
@@ -109,7 +126,7 @@
             <div class="transaction-head"><div><p>Sale #</p><h1>Sale Invoice</h1></div><div class="payment-switch"><span>Credit</span><b>Cash</b></div></div>
             <div class="transaction-meta"><label>Search by Name / Phone<select id="invoiceParty"></select></label><label>Invoice Number<input value="Auto" readonly></label><label>Invoice Date<input id="invoiceDate" type="date"></label><label>State of Supply<select id="invoiceTaxType"><option value="auto">Auto</option><option value="cgst-sgst">Same State</option><option value="igst">Other State (IGST)</option></select></label></div>
             <div class="entry-table"><div class="entry-labels"><span>#</span><span>Item</span><span>HSN / SAC</span><span>Size</span><span>Qty</span><span>Unit</span><span>Rate</span><span>Tax %</span><span>Amount</span></div><div class="entry-inputs"><span>1</span><input id="invoiceItem" required placeholder="Add item or service"><input id="invoiceHsn" placeholder="998386"><input id="invoiceSize" placeholder="30 x 25"><input id="invoiceQty" type="number" min="1" value="1"><select id="invoiceUnit"><option>Sq. Feet</option><option>Nos</option><option>Kg</option></select><input id="invoiceRate" type="number" min="0" value="0"><input id="invoiceTax" type="number" min="0" value="18"><strong id="invoiceAmount">Rs. 0.00</strong></div><div class="entry-total"><button type="button">+ Add Row</button><span id="invoiceArea">Area: 0 Sq. Ft</span><strong>Total: <b id="invoiceTotal">Rs. 0.00</b></strong></div></div>
-            <div class="transaction-notes"><label>Terms & Conditions<textarea placeholder="Add terms and conditions"></textarea></label><label>Description<textarea placeholder="Add description"></textarea></label></div><div class="transaction-footer"><button class="secondary" type="button">Share</button><button class="primary" type="submit">Save Invoice</button></div>
+            <div class="transaction-notes"><label>Terms & Conditions<textarea id="invoiceTerms" placeholder="Add terms and conditions"></textarea></label><label>Description<textarea id="invoiceDescription" placeholder="Add description"></textarea></label></div><div class="transaction-footer"><button class="secondary" type="button">Share</button><button class="primary" type="submit">Save Invoice</button></div>
           </form>
           <section class="panel list-panel"><div class="panel-title"><h2>Sale Invoices</h2><span id="invoiceCount"></span></div><div class="table-wrap"><table><thead><tr><th>Invoice No</th><th>Date</th><th>Party</th><th>Item</th><th class="right">Amount</th><th>Action</th></tr></thead><tbody id="invoiceList"></tbody></table></div></section>
         </section>
@@ -119,7 +136,7 @@
             <div class="transaction-head"><div><p>Estimate #</p><h1>Estimate / Quotation</h1></div></div>
             <div class="transaction-meta"><label>Search by Name / Phone<select id="quoteParty"></select></label><label>Reference No<input value="Auto" readonly></label><label>Estimate Date<input id="quoteDate" type="date"></label><label>State of Supply<select id="quoteTaxType"><option value="auto">Auto</option><option value="cgst-sgst">Same State</option><option value="igst">Other State (IGST)</option></select></label></div>
             <div class="entry-table"><div class="entry-labels"><span>#</span><span>Item</span><span>HSN / SAC</span><span>Size</span><span>Qty</span><span>Unit</span><span>Rate</span><span>Tax %</span><span>Amount</span></div><div class="entry-inputs"><span>1</span><input id="quoteItem" required placeholder="Add item or service"><input id="quoteHsn" placeholder="998386"><input id="quoteSize" placeholder="30 x 25"><input id="quoteQty" type="number" min="1" value="1"><select id="quoteUnit"><option>Sq. Feet</option><option>Nos</option><option>Kg</option></select><input id="quoteRate" type="number" min="0" value="0"><input id="quoteTax" type="number" min="0" value="18"><strong id="quoteAmount">Rs. 0.00</strong></div><div class="entry-total"><button type="button">+ Add Row</button><span id="quoteArea">Area: 0 Sq. Ft</span><strong>Total: <b id="quoteTotal">Rs. 0.00</b></strong></div></div>
-            <div class="transaction-notes"><label>Terms & Conditions<textarea placeholder="Add terms and conditions"></textarea></label><label>Description<textarea placeholder="Add description"></textarea></label></div><div class="transaction-footer"><button class="secondary" type="button">Share</button><button class="primary" type="submit">Save Estimate</button></div>
+            <div class="transaction-notes"><label>Terms & Conditions<textarea id="quoteTerms" placeholder="Add terms and conditions"></textarea></label><label>Description<textarea id="quoteDescription" placeholder="Add description"></textarea></label></div><div class="transaction-footer"><button class="secondary" type="button">Share</button><button class="primary" type="submit">Save Estimate</button></div>
           </form>
           <section class="panel list-panel"><div class="panel-title"><h2>Estimates / Quotations</h2><span id="quoteCount"></span></div><div class="table-wrap"><table><thead><tr><th>Estimate No</th><th>Date</th><th>Party</th><th>Item</th><th class="right">Amount</th><th>Action</th></tr></thead><tbody id="quoteList"></tbody></table></div></section>
         </section>
@@ -146,6 +163,8 @@
     <section class="document-overlay" id="documentOverlay" aria-hidden="true">
       <div class="document-actions">
         <button type="button" id="closeDocument">Close</button>
+        <select id="downloadFormat" aria-label="Download format"><option value="pdf">PDF</option><option value="word">Word</option></select>
+        <button type="button" id="downloadDocument">Download</button>
         <button class="primary" type="button" id="printDocument">Print</button>
       </div>
       <article class="document-sheet" id="printDocumentContent"></article>

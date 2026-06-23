@@ -11,7 +11,15 @@ const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
 let editingCompanyId = null;
 let editingPartyId = null;
+let pendingCompanyLogo = "";
 let state = load();
+
+function setSidebarCollapsed(collapsed) {
+  $(".app-shell").classList.toggle("sidebar-collapsed", collapsed);
+  $("#sidebarToggle").textContent = collapsed ? ">" : "<";
+  $("#sidebarToggle").title = collapsed ? "Expand sidebar" : "Collapse sidebar";
+  localStorage.setItem("tbd-sidebar-collapsed", String(collapsed));
+}
 
 function load() {
   try {
@@ -44,32 +52,34 @@ function sizeArea(size) {
   return values ? Number(values[1]) * Number(values[2]) : 0;
 }
 function billQuantity(entry) { return entry.unit === "Sq. Feet" ? sizeArea(entry.size) * Number(entry.qty || 1) : Number(entry.qty || 0); }
-function lineAmount(entry) { return billQuantity(entry) * Number(entry.rate || 0); }
+function lineAmount(entry) { if (Array.isArray(entry.items)) return entry.items.reduce((sum, item) => sum + lineAmount(item), 0); return billQuantity(entry) * Number(entry.rate || 0); }
 function resolvedTaxType(entry) { if (entry.taxType && entry.taxType !== "auto") return entry.taxType; const party = partyById(entry.partyId); return party?.address?.state && activeCompany().address?.state && party.address.state.trim().toLowerCase() !== activeCompany().address.state.trim().toLowerCase() ? "igst" : "cgst-sgst"; }
-function taxAmounts(entry) { const base = lineAmount(entry); const totalTax = base * Number(entry.tax || 0) / 100; const type = resolvedTaxType(entry); return { base, type, cgst: type === "cgst-sgst" ? totalTax / 2 : 0, sgst: type === "cgst-sgst" ? totalTax / 2 : 0, igst: type === "igst" ? totalTax : 0, total: base + totalTax }; }
+function taxAmounts(entry) { const base = lineAmount(entry); const totalTax = Array.isArray(entry.items) ? entry.items.reduce((sum, item) => sum + lineAmount(item) * Number(item.tax || 0) / 100, 0) : base * Number(entry.tax || 0) / 100; const type = resolvedTaxType(entry); return { base, type, cgst: type === "cgst-sgst" ? totalTax / 2 : 0, sgst: type === "cgst-sgst" ? totalTax / 2 : 0, igst: type === "igst" ? totalTax : 0, total: base + totalTax }; }
 
 function toast(message) { $("#toast").textContent = message; $("#toast").classList.add("show"); setTimeout(() => $("#toast").classList.remove("show"), 1800); }
 function setView(view) { $$(".view").forEach((node) => node.classList.toggle("active", node.id === `${view}View`)); $$(".nav-item, .nav-child").forEach((node) => node.classList.toggle("active", node.dataset.view === view)); $("#companyMenu").classList.remove("show"); }
-function resetCompanyForm() { editingCompanyId = null; $("#companyFormTitle").textContent = "Add Company"; $("#companyForm").reset(); $("#companyState").value = "Tamil Nadu"; $("#companyTerms").value = "Thanks for doing business with us."; }
+function logoMarkup(company, className) { return company.logo ? `<img class="${className}" src="${company.logo}" alt="${company.name} logo">` : company.name.slice(0, 2).toUpperCase(); }
+function showCompanyLogoPreview(logo) { $("#companyLogoPreview").innerHTML = logo ? `<img src="${logo}" alt="Company logo preview">` : "Add Logo"; }
+function resetCompanyForm() { editingCompanyId = null; pendingCompanyLogo = ""; $("#companyFormTitle").textContent = "Add Company"; $("#companyForm").reset(); $("#companyState").value = "Tamil Nadu"; showCompanyLogoPreview(""); }
 function resetPartyForm() { editingPartyId = null; $("#partyForm h2").textContent = "Add Party Details"; $("#partyForm").reset(); $("#partyState").value = "Tamil Nadu"; }
 
 function renderCompany() {
   const company = activeCompany();
-  $("#currentCompany").innerHTML = `<span class="company-logo">${company.name.slice(0, 2).toUpperCase()}</span><div><strong>${company.name}</strong><small>${company.gstin || "Business account"}</small></div>`;
+  $("#currentCompany").innerHTML = `<span class="company-logo">${logoMarkup(company, "sidebar-logo-image")}</span><div><strong>${company.name}</strong><small>${company.gstin || "Business account"}</small></div>`;
   document.title = `${company.name} Billing`;
-  $("#companyList").innerHTML = state.companies.map((company) => `<article class="company-row ${company.id === state.activeCompanyId ? "selected" : ""}"><span>${company.name.slice(0, 2).toUpperCase()}</span><div class="company-copy"><strong>${company.name}</strong><small>${company.gstin || "No GSTIN"}</small></div><div class="row-actions"><button type="button" data-company-id="${company.id}">Use</button><button type="button" data-company-edit="${company.id}">Edit</button></div></article>`).join("");
+  $("#companyList").innerHTML = state.companies.map((company) => `<article class="company-row ${company.id === state.activeCompanyId ? "selected" : ""}"><span>${logoMarkup(company, "company-list-logo")}</span><div class="company-copy"><strong>${company.name}</strong><small>${company.gstin || "No GSTIN"}</small></div><div class="row-actions"><button type="button" data-company-id="${company.id}">Use</button><button type="button" data-company-edit="${company.id}">Edit</button></div></article>`).join("");
 }
 
 function renderParties() {
   const parties = scoped(state.parties);
   $("#partyCount").textContent = `${parties.length} records`;
-  $("#partyList").innerHTML = parties.map((party) => `<article class="record"><div><strong>${party.name}</strong><small>${party.phone || "No phone"}${party.gstin ? ` | ${party.gstin}` : ""}</small><small>${addressText(party.address)}</small></div><button class="text-button" type="button" data-party-edit="${party.id}">Edit</button></article>`).join("") || "<p class=\"muted\">No party details yet.</p>";
+  $("#partyList").innerHTML = parties.map((party) => `<article class="record"><div><strong>${party.name}</strong><small>${party.phone || "No phone"}${party.gstin ? ` | ${party.gstin}` : ""}</small><small>${addressText(party.address)}</small></div><div class="record-actions"><button class="text-button" type="button" data-party-edit="${party.id}">Edit</button><button class="delete-button" type="button" data-party-delete="${party.id}">Delete</button></div></article>`).join("") || "<p class=\"muted\">No party details yet.</p>";
   const options = parties.map((party) => `<option value="${party.id}">${party.name}</option>`).join("");
   $("#invoiceParty").innerHTML = options || "<option value=\"\">Add a party first</option>";
   $("#quoteParty").innerHTML = options || "<option value=\"\">Add a party first</option>";
 }
 
-function rows(entries, type) { return entries.slice().reverse().map((entry) => `<tr><td>${entry.number}</td><td>${entry.date}</td><td>${partyName(entry.partyId)}</td><td>${entry.item}</td><td class="right">${money(lineAmount(entry))}</td><td><button class="print-link" data-document-type="${type}" data-document-id="${entry.number}">View</button></td></tr>`).join("") || "<tr><td colspan=\"6\" class=\"muted\">No records yet.</td></tr>"; }
+function rows(entries, type) { return entries.slice().reverse().map((entry) => `<tr><td>${entry.number}</td><td>${entry.date}</td><td>${partyName(entry.partyId)}</td><td>${entry.item}</td><td class="right">${money(lineAmount(entry))}</td><td><button class="print-link" data-document-type="${type}" data-document-id="${entry.number}">View</button><button class="delete-button" data-document-delete="${type}" data-document-id="${entry.number}">Delete</button></td></tr>`).join("") || "<tr><td colspan=\"6\" class=\"muted\">No records yet.</td></tr>"; }
 function renderSales() { const invoices = scoped(state.invoices); const quotes = scoped(state.quotes); $("#invoiceCount").textContent = `${invoices.length} invoices`; $("#quoteCount").textContent = `${quotes.length} estimates`; $("#invoiceList").innerHTML = rows(invoices, "invoice"); $("#quoteList").innerHTML = rows(quotes, "quote"); }
 function renderHome() { const invoices = scoped(state.invoices); const transactions = scoped(state.transactions); $("#partyMetric").textContent = scoped(state.parties).length; $("#invoiceMetric").textContent = invoices.length; $("#salesMetric").textContent = money(invoices.reduce((sum, entry) => sum + lineAmount(entry), 0)); $("#quoteMetric").textContent = scoped(state.quotes).length; $("#homeTransactions").innerHTML = transactions.slice().reverse().slice(0, 5).map((entry) => `<div class="record"><div><strong>${entry.type}</strong><small>${entry.reference} | ${partyName(entry.partyId)}</small></div><strong>${money(entry.amount)}</strong></div>`).join("") || "<p class=\"muted\">No transactions yet.</p>"; }
 function renderTransactions() { $("#transactionList").innerHTML = scoped(state.transactions).slice().reverse().map((entry) => `<tr><td>${entry.date}</td><td>${entry.type}</td><td>${entry.reference}</td><td>${partyName(entry.partyId)}</td><td class="right">${money(entry.amount)}</td></tr>`).join("") || "<tr><td colspan=\"5\" class=\"muted\">No transactions yet.</td></tr>"; }
@@ -78,12 +88,32 @@ function renderAll() { renderCompany(); renderParties(); renderSales(); renderHo
 
 function updateSaleCalculation(kind) {
   const key = kind === "invoice" ? "invoice" : "quote";
-  const entry = { size: $(`#${key}Size`).value, unit: $(`#${key}Unit`).value, qty: $(`#${key}Qty`).value, rate: $(`#${key}Rate`).value };
-  const area = sizeArea(entry.size) * Number(entry.qty || 1);
-  const amount = lineAmount(entry);
+  const items = draftItems(key);
+  const area = items.reduce((sum, entry) => sum + (entry.unit === "Sq. Feet" ? sizeArea(entry.size) * Number(entry.qty || 1) : 0), 0);
+  const amount = items.reduce((sum, entry) => sum + lineAmount(entry), 0);
   $(`#${key}Area`).textContent = `Area: ${area.toLocaleString("en-IN")} Sq. Ft`;
   $(`#${key}Amount`).textContent = `Amount: ${money(amount)}`;
   $(`#${key}Total`).textContent = money(amount);
+}
+
+function draftItems(kind) {
+  const primary = { item: $(`#${kind}Item`).value, hsn: $(`#${kind}Hsn`).value, size: $(`#${kind}Size`).value, qty: Number($(`#${kind}Qty`).value || 1), unit: $(`#${kind}Unit`).value, rate: Number($(`#${kind}Rate`).value || 0), tax: Number($(`#${kind}Tax`).value || 0) };
+  const extras = [...document.querySelectorAll(`.extra-entry-row[data-kind="${kind}"]`)].map((row) => ({ item: row.querySelector('[data-field="item"]').value, hsn: row.querySelector('[data-field="hsn"]').value, size: row.querySelector('[data-field="size"]').value, qty: Number(row.querySelector('[data-field="qty"]').value || 1), unit: row.querySelector('[data-field="unit"]').value, rate: Number(row.querySelector('[data-field="rate"]').value || 0), tax: Number(row.querySelector('[data-field="tax"]').value || 0) }));
+  return [primary, ...extras];
+}
+
+function addItemRow(kind) {
+  const rowCount = document.querySelectorAll(`.extra-entry-row[data-kind="${kind}"]`).length + 2;
+  const row = document.createElement("div");
+  row.className = "entry-inputs extra-entry-row";
+  row.dataset.kind = kind;
+  row.innerHTML = `<span>${rowCount}</span><input data-field="item" required placeholder="Add item or service"><input data-field="hsn" placeholder="998386"><input data-field="size" placeholder="30 x 25"><input data-field="qty" type="number" min="1" value="1"><select data-field="unit"><option>Sq. Feet</option><option>Nos</option><option>Kg</option></select><input data-field="rate" type="number" min="0" value="0"><input data-field="tax" type="number" min="0" value="18"><button class="remove-row" type="button" title="Remove row">x</button>`;
+  const total = $(`#${kind}Form .entry-total`);
+  total.before(row);
+  row.addEventListener("input", () => updateSaleCalculation(kind));
+  row.addEventListener("change", () => updateSaleCalculation(kind));
+  row.querySelector(".remove-row").addEventListener("click", () => { row.remove(); updateSaleCalculation(kind); });
+  row.querySelector('[data-field="item"]').focus();
 }
 
 function amountWords(amount) {
@@ -98,29 +128,86 @@ function showDocument(type, number) {
   const taxColumn = tax.type === "igst" ? `<td>${money(tax.igst)}<small>IGST ${entry.tax || 0}%</small></td>` : `<td>${money(tax.cgst)}<small>CGST ${Number(entry.tax || 0) / 2}%</small></td><td>${money(tax.sgst)}<small>SGST ${Number(entry.tax || 0) / 2}%</small></td>`;
   const taxSummary = tax.type === "igst" ? `<tr><td>IGST</td><td>${money(tax.base)}</td><td>${entry.tax || 0}%</td><td>${money(tax.igst)}</td></tr>` : `<tr><td>CGST</td><td>${money(tax.base)}</td><td>${Number(entry.tax || 0) / 2}%</td><td>${money(tax.cgst)}</td></tr><tr><td>SGST</td><td>${money(tax.base)}</td><td>${Number(entry.tax || 0) / 2}%</td><td>${money(tax.sgst)}</td></tr>`;
   $("#printDocumentContent").innerHTML = `<h2 class="reference-doc-title">${type === "invoice" ? "Sale" : "Estimate / Quotation"}</h2><div class="reference-company"><div class="logo-box">${company.name.slice(0, 2).toUpperCase()}</div><div><h1>${company.name}</h1><p>${addressText(company.address)}</p><p>Ph. no.: ${company.phone || "-"}</p></div></div><div class="reference-meta"><section><h3>Bill To:</h3><b>${party.name || "-"}</b><p>${addressText(party.address)}</p><p>Contact No.: ${party.phone || "-"}</p></section><section><h3>Shipping To</h3><p>${addressText(party.address)}</p></section><section><h3>${type === "invoice" ? "Invoice Details" : "Estimate Details"}</h3><p>${heading} ${entry.number}</p><p>Date: ${entry.date}</p><p>State: ${party.address?.state || "-"}</p></section></div><table class="reference-items"><thead><tr><th>#</th><th>Item name</th><th>HSC/SAC</th><th>Quantity</th><th>${rateLabel}</th><th>Discount</th>${tax.type === "igst" ? "<th>IGST</th>" : "<th>CGST</th><th>SGST</th>"}<th>Amount</th></tr></thead><tbody><tr><td>1</td><td><b>${entry.item}</b><small>${entry.size || ""} ${entry.unit}</small></td><td>${entry.hsn || "-"}</td><td>${billQuantity(entry).toLocaleString("en-IN")}</td><td>${money(entry.rate)}</td><td>${money(0)}</td>${taxColumn}<td>${money(tax.total)}</td></tr></tbody><tfoot><tr><td></td><td><b>Total</b></td><td></td><td><b>${billQuantity(entry).toLocaleString("en-IN")}</b></td><td></td><td></td>${tax.type === "igst" ? `<td><b>${money(tax.igst)}</b></td>` : `<td><b>${money(tax.cgst)}</b></td><td><b>${money(tax.sgst)}</b></td>`}<td><b>${money(tax.total)}</b></td></tr></tfoot></table><div class="reference-lower"><table><thead><tr><th>Tax type</th><th>Taxable amount</th><th>Rate</th><th>Tax amount</th></tr></thead><tbody>${taxSummary}</tbody></table><table><thead><tr><th colspan="2">Amounts</th></tr></thead><tbody><tr><td>Sub Total</td><td>${money(tax.base)}</td></tr><tr><td>Total</td><td><b>${money(tax.total)}</b></td></tr><tr><td>Balance</td><td>${money(tax.total)}</td></tr></tbody></table></div><div class="reference-words"><section><h3>Invoice Amount In Words</h3><p>${amountWords(tax.total)}</p></section><section><h3>Description</h3><p>Sale Description</p></section></div><div class="reference-footer"><section><h3>Bank Details</h3><p>Bank Name: ${company.bank.name || "-"}</p><p>Account No.: ${company.bank.accountNumber || "-"}</p><p>IFSC Code: ${company.bank.ifscCode || "-"}</p></section><section><h3>Terms and conditions</h3><p>${company.terms || "-"}</p></section><section><p>For: ${company.name}</p><div class="signature-box">${company.name.slice(0, 2).toUpperCase()}</div><b>Authorized Signatory</b></section></div>`;
+  const documentTerms = $("#printDocumentContent .reference-footer section:nth-child(2) p");
+  const documentDescription = $("#printDocumentContent .reference-words section:last-child p");
+  if (documentTerms) documentTerms.textContent = entry.terms || "-";
+  if (documentDescription) documentDescription.textContent = entry.description || "-";
+  if (company.logo) {
+    const sheet = $("#printDocumentContent");
+    sheet.insertAdjacentHTML("afterbegin", `<img class="document-watermark" src="${company.logo}" alt="">`);
+    sheet.querySelectorAll(".logo-box, .signature-box").forEach((box) => { box.innerHTML = `<img class="document-logo" src="${company.logo}" alt="${company.name} logo">`; });
+  }
   $("#documentOverlay").classList.add("show"); $("#documentOverlay").setAttribute("aria-hidden", "false");
 }
 
 $$('[data-view]').forEach((button) => button.addEventListener("click", () => setView(button.dataset.view)));
-$("#partyNav").addEventListener("click", () => { resetPartyForm(); $("#partyForm").classList.remove("hidden"); });
-$("#saleNav").addEventListener("click", () => { $("#invoiceForm").reset(); $("#invoiceForm").classList.remove("hidden"); updateSaleCalculation("invoice"); });
+$("#partyNav").addEventListener("click", () => {
+  const menu = $("#partyChildren");
+  const open = !menu.classList.contains("open");
+  menu.classList.toggle("open", open);
+  $("#partyNav").classList.toggle("active", open);
+});
+$("#saleNav").addEventListener("click", () => {
+  const menu = $("#saleChildren");
+  const open = !menu.classList.contains("open");
+  menu.classList.toggle("open", open);
+  $("#saleNav").classList.toggle("active", open);
+});
+$("#settingsNav").addEventListener("click", () => {
+  const menu = $("#settingsChildren");
+  const open = !menu.classList.contains("open");
+  menu.classList.toggle("open", open);
+  $("#settingsNav").classList.toggle("active", open);
+});
 $("#companyButton").addEventListener("click", () => $("#companyMenu").classList.toggle("show"));
+$("#companyLogoFile").addEventListener("change", (event) => { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = () => { pendingCompanyLogo = reader.result; showCompanyLogoPreview(pendingCompanyLogo); }; reader.readAsDataURL(file); });
+$("#sidebarToggle").addEventListener("click", () => setSidebarCollapsed(!$(".app-shell").classList.contains("sidebar-collapsed")));
 $("#addCompanyMenu").addEventListener("click", () => { setView("companies"); resetCompanyForm(); $("#companyForm").classList.remove("hidden"); });
 $("#addCompany").addEventListener("click", () => { resetCompanyForm(); $("#companyForm").classList.remove("hidden"); });
 $("#showPartyForm").addEventListener("click", () => { resetPartyForm(); $("#partyForm").classList.remove("hidden"); });
 $("#quickInvoice").addEventListener("click", () => { setView("sale"); $("#invoiceForm").reset(); updateSaleCalculation("invoice"); });
 
-$("#companyList").addEventListener("click", (event) => { const use = event.target.closest("[data-company-id]"); const edit = event.target.closest("[data-company-edit]"); if (use) { state.activeCompanyId = use.dataset.companyId; save(); renderAll(); toast("Company changed."); } if (edit) { const company = state.companies.find((item) => item.id === edit.dataset.companyEdit); if (!company) return; editingCompanyId = company.id; $("#companyFormTitle").textContent = "Edit Company"; $("#companyName").value = company.name; $("#companyGstin").value = company.gstin; $("#companyPhone").value = company.phone; $("#companyAddressLine1").value = company.address.line1 || ""; $("#companyAddressLine2").value = company.address.line2 || ""; $("#companyCity").value = company.address.city || ""; $("#companyState").value = company.address.state || "Tamil Nadu"; $("#companyPincode").value = company.address.pincode || ""; $("#companyBankName").value = company.bank.name || ""; $("#companyAccountNumber").value = company.bank.accountNumber || ""; $("#companyIfscCode").value = company.bank.ifscCode || ""; $("#companyTerms").value = company.terms || ""; $("#companyForm").classList.remove("hidden"); } });
-$("#partyList").addEventListener("click", (event) => { const button = event.target.closest("[data-party-edit]"); if (!button) return; const party = partyById(button.dataset.partyEdit); if (!party) return; editingPartyId = party.id; $("#partyForm h2").textContent = "Edit Party Details"; $("#partyName").value = party.name; $("#partyPhone").value = party.phone; $("#partyGstin").value = party.gstin; $("#partyAddressLine1").value = party.address.line1 || ""; $("#partyAddressLine2").value = party.address.line2 || ""; $("#partyCity").value = party.address.city || ""; $("#partyState").value = party.address.state || "Tamil Nadu"; $("#partyPincode").value = party.address.pincode || ""; $("#partyForm").classList.remove("hidden"); });
+$("#companyList").addEventListener("click", (event) => { const use = event.target.closest("[data-company-id]"); const edit = event.target.closest("[data-company-edit]"); if (use) { state.activeCompanyId = use.dataset.companyId; save(); renderAll(); toast("Company changed."); } if (edit) { const company = state.companies.find((item) => item.id === edit.dataset.companyEdit); if (!company) return; editingCompanyId = company.id; pendingCompanyLogo = company.logo || ""; showCompanyLogoPreview(pendingCompanyLogo); $("#companyFormTitle").textContent = "Edit Company"; $("#companyName").value = company.name; $("#companyGstin").value = company.gstin; $("#companyPhone").value = company.phone; $("#companyAddressLine1").value = company.address.line1 || ""; $("#companyAddressLine2").value = company.address.line2 || ""; $("#companyCity").value = company.address.city || ""; $("#companyState").value = company.address.state || "Tamil Nadu"; $("#companyPincode").value = company.address.pincode || ""; $("#companyBankName").value = company.bank.name || ""; $("#companyAccountNumber").value = company.bank.accountNumber || ""; $("#companyIfscCode").value = company.bank.ifscCode || ""; $("#companyForm").classList.remove("hidden"); } });
+$("#partyList").addEventListener("click", (event) => { const remove = event.target.closest("[data-party-delete]"); if (remove) { const partyId = remove.dataset.partyDelete; const hasDocuments = [...scoped(state.invoices), ...scoped(state.quotes)].some((entry) => entry.partyId === partyId); if (hasDocuments) return toast("Delete this party's invoices and estimates first."); if (!window.confirm("Delete this party?")) return; state.parties = state.parties.filter((party) => party.id !== partyId); save(); renderAll(); return toast("Party deleted."); } const button = event.target.closest("[data-party-edit]"); if (!button) return; const party = partyById(button.dataset.partyEdit); if (!party) return; editingPartyId = party.id; $("#partyForm h2").textContent = "Edit Party"; $("#partyName").value = party.name; $("#partyPhone").value = party.phone; $("#partyGstin").value = party.gstin; $("#partyGstType").value = party.gstType || "Unregistered / Consumer"; $("#partyEmail").value = party.email || ""; $("#partyAddressLine1").value = party.address.line1 || ""; $("#partyAddressLine2").value = party.address.line2 || ""; $("#partyCity").value = party.address.city || ""; $("#partyState").value = party.address.state || "Tamil Nadu"; $("#partyPincode").value = party.address.pincode || ""; $("#partyForm").classList.remove("hidden"); });
 
-$("#companyForm").addEventListener("submit", (event) => { event.preventDefault(); const wasEditing = Boolean(editingCompanyId); const company = { id: editingCompanyId || crypto.randomUUID(), name: $("#companyName").value.trim(), gstin: $("#companyGstin").value.trim(), phone: $("#companyPhone").value.trim(), address: addressFrom("company"), bank: { name: $("#companyBankName").value.trim(), accountNumber: $("#companyAccountNumber").value.trim(), ifscCode: $("#companyIfscCode").value.trim() }, terms: $("#companyTerms").value.trim() }; if (wasEditing) Object.assign(state.companies.find((item) => item.id === editingCompanyId), company); else { state.companies.push(company); state.activeCompanyId = company.id; } resetCompanyForm(); $("#companyForm").classList.add("hidden"); save(); renderAll(); toast(wasEditing ? "Company updated." : "Company added."); });
-$("#partyForm").addEventListener("submit", (event) => { event.preventDefault(); const party = { id: editingPartyId || crypto.randomUUID(), companyId: state.activeCompanyId, name: $("#partyName").value.trim(), phone: $("#partyPhone").value.trim(), gstin: $("#partyGstin").value.trim(), address: addressFrom("party") }; const wasEditing = Boolean(editingPartyId); if (wasEditing) Object.assign(partyById(editingPartyId), party); else state.parties.push(party); resetPartyForm(); $("#partyForm").classList.add("hidden"); save(); renderAll(); toast(wasEditing ? "Party updated." : "Party details saved."); });
+$("#companyForm").addEventListener("submit", (event) => { event.preventDefault(); const wasEditing = Boolean(editingCompanyId); const company = { id: editingCompanyId || crypto.randomUUID(), name: $("#companyName").value.trim(), logo: pendingCompanyLogo, gstin: $("#companyGstin").value.trim(), phone: $("#companyPhone").value.trim(), address: addressFrom("company"), bank: { name: $("#companyBankName").value.trim(), accountNumber: $("#companyAccountNumber").value.trim(), ifscCode: $("#companyIfscCode").value.trim() } }; if (wasEditing) Object.assign(state.companies.find((item) => item.id === editingCompanyId), company); else { state.companies.push(company); state.activeCompanyId = company.id; } resetCompanyForm(); $("#companyForm").classList.add("hidden"); save(); renderAll(); toast(wasEditing ? "Company updated." : "Company added."); });
+function saveParty(keepOpen) { const party = { id: editingPartyId || crypto.randomUUID(), companyId: state.activeCompanyId, name: $("#partyName").value.trim(), phone: $("#partyPhone").value.trim(), gstin: $("#partyGstin").value.trim(), gstType: $("#partyGstType").value, email: $("#partyEmail").value.trim(), address: addressFrom("party") }; const wasEditing = Boolean(editingPartyId); if (wasEditing) Object.assign(partyById(editingPartyId), party); else state.parties.push(party); resetPartyForm(); if (!keepOpen) $("#partyForm").classList.add("hidden"); save(); renderAll(); toast(wasEditing ? "Party updated." : "Party details saved."); }
+$("#partyForm").addEventListener("submit", (event) => { event.preventDefault(); saveParty(false); });
+$("#savePartyNew").addEventListener("click", () => { if (!$("#partyForm").reportValidity()) return; saveParty(true); $("#partyName").focus(); });
+$("#closePartyForm").addEventListener("click", () => { resetPartyForm(); $("#partyForm").classList.add("hidden"); });
 
-function saveSale(kind) { return (event) => { event.preventDefault(); const isInvoice = kind === "invoice"; const key = isInvoice ? "invoice" : "quote"; const list = isInvoice ? scoped(state.invoices) : scoped(state.quotes); const entry = { number: ref(isInvoice ? state.settings.invoicePrefix : state.settings.quotePrefix, list), companyId: state.activeCompanyId, date: $(`#${key}Date`).value || today(), partyId: $(`#${key}Party`).value, item: $(`#${key}Item`).value.trim(), hsn: $(`#${key}Hsn`).value.trim(), size: $(`#${key}Size`).value.trim(), unit: $(`#${key}Unit`).value, qty: Number($(`#${key}Qty`).value || 1), rate: Number($(`#${key}Rate`).value || 0), tax: Number($(`#${key}Tax`).value || 0), taxType: $(`#${key}TaxType`).value }; if (!entry.partyId) return toast("Add a party first."); (isInvoice ? state.invoices : state.quotes).push(entry); state.transactions.push({ companyId: state.activeCompanyId, date: entry.date, type: isInvoice ? "Sale Invoice" : "Estimate / Quotation", reference: entry.number, partyId: entry.partyId, amount: lineAmount(entry) }); event.target.reset(); save(); renderAll(); showDocument(isInvoice ? "invoice" : "quote", entry.number); toast(isInvoice ? "Sale invoice saved." : "Estimate saved."); }; }
+function saveSale(kind) { return (event) => { event.preventDefault(); const isInvoice = kind === "invoice"; const key = isInvoice ? "invoice" : "quote"; const list = isInvoice ? scoped(state.invoices) : scoped(state.quotes); const items = draftItems(key).filter((item) => item.item.trim()); if (!items.length) return toast("Add at least one item."); const first = items[0]; const entry = { number: ref(isInvoice ? state.settings.invoicePrefix : state.settings.quotePrefix, list), companyId: state.activeCompanyId, date: $(`#${key}Date`).value || today(), partyId: $(`#${key}Party`).value, ...first, items, taxType: $(`#${key}TaxType`).value, terms: $(`#${key}Terms`).value.trim(), description: $(`#${key}Description`).value.trim() }; if (!entry.partyId) return toast("Add a party first."); (isInvoice ? state.invoices : state.quotes).push(entry); state.transactions.push({ companyId: state.activeCompanyId, date: entry.date, type: isInvoice ? "Sale Invoice" : "Estimate / Quotation", reference: entry.number, partyId: entry.partyId, amount: lineAmount(entry) }); event.target.reset(); document.querySelectorAll(`.extra-entry-row[data-kind="${key}"]`).forEach((row) => row.remove()); save(); renderAll(); showDocument(isInvoice ? "invoice" : "quote", entry.number); toast(isInvoice ? "Sale invoice saved." : "Estimate saved."); }; }
 $("#invoiceForm").addEventListener("submit", saveSale("invoice")); $("#quoteForm").addEventListener("submit", saveSale("quote"));
+$("#invoiceForm .entry-total button").addEventListener("click", () => addItemRow("invoice"));
+$("#quoteForm .entry-total button").addEventListener("click", () => addItemRow("quote"));
 $("#settingsForm").addEventListener("submit", (event) => { event.preventDefault(); state.settings = { invoicePrefix: $("#invoicePrefix").value.trim() || "INV", quotePrefix: $("#quotePrefix").value.trim() || "EST", currency: $("#currency").value.trim() || "Rs.", bankName: $("#bankName").value.trim(), accountNumber: $("#accountNumber").value.trim(), ifscCode: $("#ifscCode").value.trim() }; save(); renderAll(); toast("General settings saved."); });
 ["invoice", "quote"].forEach((kind) => ["Size", "Qty", "Rate", "Unit"].forEach((field) => { $(`#${kind}${field}`).addEventListener("input", () => updateSaleCalculation(kind)); $(`#${kind}${field}`).addEventListener("change", () => updateSaleCalculation(kind)); }));
 $("#search").addEventListener("input", () => { const query = $("#search").value.toLowerCase(); $$(".record, tbody tr").forEach((row) => { row.hidden = !row.textContent.toLowerCase().includes(query); }); });
-$("#invoiceList").addEventListener("click", (event) => { const button = event.target.closest("[data-document-id]"); if (button) showDocument(button.dataset.documentType, button.dataset.documentId); }); $("#quoteList").addEventListener("click", (event) => { const button = event.target.closest("[data-document-id]"); if (button) showDocument(button.dataset.documentType, button.dataset.documentId); }); $("#closeDocument").addEventListener("click", () => { $("#documentOverlay").classList.remove("show"); $("#documentOverlay").setAttribute("aria-hidden", "true"); }); $("#printDocument").addEventListener("click", () => window.print());
+function deleteDocument(type, number) { if (!window.confirm(`Delete ${type === "invoice" ? "this invoice" : "this estimate"}?`)) return; const listKey = type === "invoice" ? "invoices" : "quotes"; state[listKey] = state[listKey].filter((entry) => !(entry.companyId === state.activeCompanyId && entry.number === number)); state.transactions = state.transactions.filter((entry) => !(entry.companyId === state.activeCompanyId && entry.reference === number)); save(); renderAll(); toast(type === "invoice" ? "Invoice deleted." : "Estimate deleted."); }
+function handleDocumentAction(event) { const remove = event.target.closest("[data-document-delete]"); if (remove) return deleteDocument(remove.dataset.documentDelete, remove.dataset.documentId); const button = event.target.closest("[data-document-id]"); if (button) showDocument(button.dataset.documentType, button.dataset.documentId); }
+$("#invoiceList").addEventListener("click", handleDocumentAction); $("#quoteList").addEventListener("click", handleDocumentAction); $("#closeDocument").addEventListener("click", () => { $("#documentOverlay").classList.remove("show"); $("#documentOverlay").setAttribute("aria-hidden", "true"); }); $("#printDocument").addEventListener("click", () => window.print());
+
+function downloadBlob(blob, filename) { const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = filename; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
+function documentFilename(extension) { const title = $("#printDocumentContent .reference-doc-title")?.textContent || "billing-document"; const company = activeCompany().name || "company"; return `${company}-${title}`.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() + `.${extension}`; }
+function pdfEscape(value) { return value.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)").replace(/[^\x20-\x7E]/g, " "); }
+function downloadPdf() { window.print(); }
+function downloadWord() {
+  const source = $("#printDocumentContent");
+  const meta = [...source.querySelectorAll(".reference-meta section")].map((section) => section.innerHTML);
+  const lower = [...source.querySelectorAll(".reference-lower table")].map((table) => table.outerHTML);
+  const words = [...source.querySelectorAll(".reference-words section")].map((section) => section.innerHTML);
+  const footer = [...source.querySelectorAll(".reference-footer section")].map((section) => section.innerHTML);
+  const company = source.querySelector(".reference-company");
+  const companyParts = company ? [...company.children] : [];
+  const logo = companyParts[0]?.innerHTML || "";
+  const companyInfo = companyParts[1]?.innerHTML || "";
+  const title = source.querySelector(".reference-doc-title")?.outerHTML || "";
+  const html = `<!doctype html><html><head><meta charset="utf-8"><style>
+    @page{size:A4;margin:8mm}body{font-family:Arial,sans-serif;color:#30333d;font-size:10pt}.word-sheet{width:100%}table{width:100%;border-collapse:collapse;table-layout:fixed}td,th{border:1px solid #777;padding:6px;vertical-align:top}.company td{border:1px solid #777}.company td:last-child{text-align:right}.logo-box,.signature-box{width:70px;height:70px;background:#ddd;text-align:center;vertical-align:middle}.document-logo{width:70px;height:70px;object-fit:contain}.reference-doc-title{text-align:center;font-size:17pt;margin:0 0 10px}.reference-meta h3,.reference-words h3,.reference-footer h3{margin:-6px -6px 7px;padding:6px;background:#928add;color:#fff;font-size:10pt}.reference-items th,.reference-lower th{background:#928add;color:#fff;font-size:9pt}.reference-items td,.reference-items th,.reference-lower td,.reference-lower th{border:1px solid #777;padding:6px;text-align:right}.reference-items td:nth-child(2),.reference-items th:nth-child(2),.reference-lower td:first-child,.reference-lower th:first-child{text-align:left}.reference-items small{display:block;margin-top:4px}.word-grid td{width:33.33%}.word-two td{width:50%}.word-footer td{width:33.33%}.word-footer td:last-child{text-align:center}.word-footer p,.reference-meta p{margin:4px 0}.reference-lower{width:100%}.reference-lower td{border:0;padding:0}.reference-lower table{width:100%}
+  </style></head><body><div class="word-sheet">${title}<table class="company"><tr><td style="width:18%">${logo}</td><td>${companyInfo}</td></tr></table><table class="word-grid"><tr>${meta.map((value) => `<td>${value}</td>`).join("")}</tr></table>${source.querySelector(".reference-items")?.outerHTML || ""}<table class="reference-lower"><tr>${lower.map((value) => `<td>${value}</td>`).join("")}</tr></table><table class="word-two"><tr>${words.map((value) => `<td>${value}</td>`).join("")}</tr></table><table class="word-footer"><tr>${footer.map((value) => `<td>${value}</td>`).join("")}</tr></table></div></body></html>`;
+  downloadBlob(new Blob([html], { type: "application/msword" }), documentFilename("doc"));
+}
+$("#downloadDocument").addEventListener("click", () => { if (!$("#printDocumentContent").innerHTML.trim()) return toast("Open an invoice or estimate first."); if ($("#downloadFormat").value === "word") downloadWord(); else { toast("In the print window, choose Save as PDF."); downloadPdf(); } });
 
 renderAll();
+setSidebarCollapsed(localStorage.getItem("tbd-sidebar-collapsed") === "true");
