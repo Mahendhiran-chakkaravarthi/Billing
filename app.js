@@ -61,6 +61,14 @@ function billQuantity(entry) { return entry.unit === "Sq. Feet" ? sizeArea(entry
 function lineAmount(entry) { if (Array.isArray(entry.items)) return entry.items.reduce((sum, item) => sum + lineAmount(item), 0); return billQuantity(entry) * Number(entry.rate || 0); }
 function resolvedTaxType(entry) { if (entry.taxType && entry.taxType !== "auto") return entry.taxType; const party = partyById(entry.partyId); return party?.address?.state && activeCompany().address?.state && party.address.state.trim().toLowerCase() !== activeCompany().address.state.trim().toLowerCase() ? "igst" : "cgst-sgst"; }
 function taxAmounts(entry) { const base = lineAmount(entry); const totalTax = Array.isArray(entry.items) ? entry.items.reduce((sum, item) => sum + lineAmount(item) * Number(item.tax || 0) / 100, 0) : base * Number(entry.tax || 0) / 100; const type = resolvedTaxType(entry); return { base, type, cgst: type === "cgst-sgst" ? totalTax / 2 : 0, sgst: type === "cgst-sgst" ? totalTax / 2 : 0, igst: type === "igst" ? totalTax : 0, total: base + totalTax }; }
+const statusOptions = { invoice: ["Unpaid", "Part Paid", "Paid"], quote: ["Draft", "Sent", "Approved", "Rejected"] };
+const statusColors = { Unpaid: ["#ef1745", "#ff8a3d"], "Part Paid": ["#ffb23d", "#ffdf7a"], Paid: ["#2dbb91", "#6ee7b7"], Draft: ["#68758e", "#a7b1c2"], Sent: ["#0a84ff", "#64c7ff"], Approved: ["#2dbb91", "#75e6bd"], Rejected: ["#ef1745", "#ff8a3d"] };
+function defaultStatus(type) { return type === "invoice" ? "Unpaid" : "Draft"; }
+function entryStatus(entry, type) { return entry.status || defaultStatus(type); }
+function statusSlug(status) { return status.toLowerCase().replace(/\s+/g, "-"); }
+function statusStyle(status) { const colors = statusColors[status] || ["#68758e", "#a7b1c2"]; return `--status-color:${colors[0]};--status-soft:${colors[1]};--status-shadow:${colors[0]}33`; }
+function statusSelect(type, entry) { return `<select class="status-select" data-status-type="${type}" data-status-id="${entry.number}" aria-label="${entry.number} status">${statusOptions[type].map((status) => `<option value="${status}" ${entryStatus(entry, type) === status ? "selected" : ""}>${status}</option>`).join("")}</select>`; }
+function statusSummary(entries, type) { return statusOptions[type].reduce((result, status) => ({ ...result, [status]: entries.filter((entry) => entryStatus(entry, type) === status).length }), {}); }
 
 function toast(message) { $("#toast").textContent = message; $("#toast").classList.add("show"); setTimeout(() => $("#toast").classList.remove("show"), 1800); }
 function activeMember() { return members[localStorage.getItem("tbd-active-member")] || null; }
