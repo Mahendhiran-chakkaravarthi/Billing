@@ -2,7 +2,7 @@ const storageKey = "tbd-simple-billing";
 
 const defaults = {
   activeCompanyId: "company-1",
-  companies: [{ id: "company-1", name: "TBD Books", logo: "", signature: "", gstin: "", phone: "", address: { line1: "", line2: "", city: "", state: "Tamil Nadu", pincode: "" }, bank: { name: "", accountHolder: "", accountNumber: "", ifscCode: "" }, terms: "Thanks for doing business with us." }],
+  companies: [{ id: "company-1", name: "THE BIGDAY", logo: "", signature: "", gstin: "", phone: "", address: { line1: "", line2: "", city: "", state: "Tamil Nadu", pincode: "" }, bank: { name: "", accountHolder: "", accountNumber: "", ifscCode: "" }, terms: "Thanks for doing business with us." }],
   parties: [], invoices: [], quotes: [], transactions: [], accountTransactions: [], dailyExpenses: [],
   settings: { invoicePrefix: "INV", quotePrefix: "EST", currency: "Rs." }
 };
@@ -131,6 +131,15 @@ function money(value) { return `${state.settings.currency} ${Number(value || 0).
 function ref(prefix, entries) { return `${prefix}-${String(entries.length + 1).padStart(3, "0")}`; }
 function addressFrom(prefix) { return { line1: $(`#${prefix}AddressLine1`).value.trim(), line2: $(`#${prefix}AddressLine2`).value.trim(), city: $(`#${prefix}City`).value.trim(), state: $(`#${prefix}State`).value.trim(), pincode: $(`#${prefix}Pincode`).value.trim() }; }
 function addressText(address = {}) { return [address.line1, address.line2, [address.city, address.state, address.pincode].filter(Boolean).join(" - ")].filter(Boolean).join(", ") || "-"; }
+function addressLines(address = {}) { return [address.line1, address.line2, address.city, address.state, address.pincode].filter(Boolean); }
+function addressHtml(address = {}, compact = false) { const lines = compact ? [[address.line1, address.line2].filter(Boolean).join(", "), [address.city, address.state, address.pincode].filter(Boolean).join(" - ")].filter(Boolean) : addressLines(address); return lines.length ? lines.map((line) => `<p>${line}</p>`).join("") : "<p>-</p>"; }
+function dateDiffDays(from, to) {
+  if (!from || !to) return "";
+  const start = new Date(from);
+  const end = new Date(to);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return "";
+  return Math.max(1, Math.round((end - start) / 86400000) + 1);
+}
 
 function sizeArea(size) {
   const values = String(size || "").replace(/,/g, "").match(/(\d+(?:\.\d+)?)\s*(?:x|X|\*)\s*(\d+(?:\.\d+)?)/);
@@ -155,7 +164,8 @@ const workTypes = ["Mini Hoarding", "Hoarding", "Lamp Post", "Barricade", "Wall 
 function toast(message) { $("#toast").textContent = message; $("#toast").classList.add("show"); setTimeout(() => $("#toast").classList.remove("show"), 1800); }
 function loginError(message = "", type = "error") { $("#loginError").textContent = message; $("#loginError").className = `login-error${message ? " show" : ""}${type === "success" ? " success" : ""}${type === "info" ? " info" : ""}`; }
 function activeMember() { return members[sessionStorage.getItem("tbd-active-member")] || null; }
-function renderSession() { const member = activeMember(); $("#loginOverlay").classList.toggle("hidden", Boolean(member)); $("#sessionUser").textContent = member ? member.name : ""; $("#logoutButton").classList.toggle("hidden", !member); if (member) loginError(""); }
+function renderLoginBrand() { const company = activeCompany(); const mark = $("#loginBrandMark"); if (mark) mark.innerHTML = company.logo ? `<img class="login-logo-image" src="${company.logo}" alt="${company.name} logo">` : "B"; }
+function renderSession() { const member = activeMember(); renderLoginBrand(); $("#loginOverlay").classList.toggle("hidden", Boolean(member)); $("#sessionUser").textContent = member ? member.name : ""; $("#logoutButton").classList.toggle("hidden", !member); if (member) loginError(""); }
 function setView(view) { $$(".view").forEach((node) => node.classList.toggle("active", node.id === `${view}View`)); $$(".nav-item, .nav-child").forEach((node) => node.classList.toggle("active", node.dataset.view === view)); $("#companyMenu").classList.remove("show"); }
 function logoMarkup(company, className) { return company.logo ? `<img class="${className}" src="${company.logo}" alt="${company.name} logo">` : company.name.slice(0, 2).toUpperCase(); }
 function showCompanyLogoPreview(logo) { $("#companyLogoPreview").innerHTML = logo ? `<img src="${logo}" alt="Company logo preview">` : "Add Logo"; }
@@ -311,7 +321,7 @@ function renderParties() {
   $("#quoteParty").innerHTML = options || "<option value=\"\">Add a party first</option>";
 }
 
-function rows(entries, type) { return entries.slice().reverse().map((entry) => `<tr class="status-${statusSlug(entryStatus(entry, type))}"><td>${entry.number}</td><td>${entry.date}</td><td>${partyName(entry.partyId)}</td><td>${entry.item}</td><td>${statusSelect(type, entry)}</td><td class="right">${money(lineAmount(entry))}</td><td><button class="print-link" data-document-type="${type}" data-document-id="${entry.number}">View</button><button class="text-button" data-document-edit="${type}" data-document-id="${entry.number}">Edit</button><button class="delete-button" data-document-delete="${type}" data-document-id="${entry.number}">Delete</button></td></tr>`).join("") || "<tr><td colspan=\"7\" class=\"muted\">No records yet.</td></tr>"; }
+function rows(entries, type) { return entries.slice().reverse().map((entry) => `<tr><td>${entry.number}</td><td>${entry.date}</td><td>${partyName(entry.partyId)}</td><td>${entry.item}</td><td class="right">${money(lineAmount(entry))}</td><td><button class="print-link" data-document-type="${type}" data-document-id="${entry.number}">View</button><button class="text-button" data-document-edit="${type}" data-document-id="${entry.number}">Edit</button><button class="delete-button" data-document-delete="${type}" data-document-id="${entry.number}">Delete</button></td></tr>`).join("") || "<tr><td colspan=\"6\" class=\"muted\">No records yet.</td></tr>"; }
 function renderSales() { const invoices = scoped(state.invoices); const quotes = scoped(state.quotes); $("#invoiceCount").textContent = `${invoices.length} invoices`; $("#quoteCount").textContent = `${quotes.length} estimates`; $("#invoiceList").innerHTML = rows(invoices, "invoice"); $("#quoteList").innerHTML = rows(quotes, "quote"); }
 function renderHome() { const invoices = scoped(state.invoices); const transactions = scoped(state.transactions); $("#partyMetric").textContent = scoped(state.parties).length; $("#invoiceMetric").textContent = invoices.length; $("#salesMetric").textContent = money(invoices.reduce((sum, entry) => sum + lineAmount(entry), 0)); $("#quoteMetric").textContent = scoped(state.quotes).length; $("#homeTransactions").innerHTML = transactions.slice().reverse().slice(0, 5).map((entry) => `<div class="record"><div><strong>${entry.type}</strong><small>${entry.reference} | ${partyName(entry.partyId)}</small></div><strong>${money(entry.amount)}</strong></div>`).join("") || "<p class=\"muted\">No transactions yet.</p>"; }
 function renderTransactions() { $("#transactionList").innerHTML = scoped(state.transactions).slice().reverse().map((entry) => `<tr><td>${entry.date}</td><td>${entry.type}</td><td>${entry.reference}</td><td>${partyName(entry.partyId)}</td><td class="right">${money(entry.amount)}</td></tr>`).join("") || "<tr><td colspan=\"5\" class=\"muted\">No transactions yet.</td></tr>"; }
@@ -383,11 +393,16 @@ function updateDayCloseTotal() {
 function renderAccounts() {
   const allEntries = accountEntries();
   const entries = filteredAccountEntries();
+  const dailyEntriesAll = dailyExpenseEntries().filter(matchesAccountFilters);
+  const currentMonth = today().slice(0, 7);
   $("#accountCapitalMetric").textContent = money(accountTotal(entries, "Partner Capital"));
   $("#accountIncomeMetric").textContent = money(accountTotal(entries, "Business Income"));
   $("#accountExpenseMetric").textContent = money(accountTotal(entries, "Expense"));
   $("#accountWithdrawalMetric").textContent = money(accountTotal(entries, "Partner Withdrawal"));
   $("#accountCashMetric").textContent = money(accountBalance(entries));
+  $("#accountTodayExpenseMetric").textContent = money(dailyEntriesAll.filter((entry) => entry.date === today()).reduce((sum, entry) => sum + Number(entry.amount || 0), 0));
+  $("#accountMonthExpenseMetric").textContent = money(dailyEntriesAll.filter((entry) => String(entry.date || "").slice(0, 7) === currentMonth).reduce((sum, entry) => sum + Number(entry.amount || 0), 0));
+  $("#accountOpenDailyMetric").textContent = money(dailyEntriesAll.filter((entry) => !entry.closed).reduce((sum, entry) => sum + Number(entry.amount || 0), 0));
   const accountCompanyValue = $("#accountCompany").value || state.activeCompanyId;
   const dailyCompanyValue = $("#dailyExpenseCompany").value || state.activeCompanyId;
   const closeCompanyValue = $("#dayCloseCompany").value || dailyCompanyValue;
@@ -462,6 +477,22 @@ function amountWords(amount) {
   const under100 = (n) => n < 20 ? ones[n] : `${tens[Math.floor(n / 10)]}${n % 10 ? ` ${ones[n % 10]}` : ""}`; const under1000 = (n) => n < 100 ? under100(n) : `${ones[Math.floor(n / 100)]} Hundred${n % 100 ? ` ${under100(n % 100)}` : ""}`;
   if (!amount) return "Zero Rupees Only"; const value = Math.round(amount); const lakh = Math.floor(value / 100000); const thousand = Math.floor((value % 100000) / 1000); const rest = value % 1000; return `${lakh ? `${under1000(lakh)} Lakh ` : ""}${thousand ? `${under1000(thousand)} Thousand ` : ""}${rest ? under1000(rest) : ""} Rupees Only`.trim();
 }
+function fitDocumentToSinglePage() {
+  const sheet = $("#printDocumentContent");
+  if (!sheet) return;
+  sheet.style.setProperty("--document-print-scale", "1");
+  const targetHeight = 1030;
+  const contentHeight = Math.max(sheet.scrollHeight, sheet.offsetHeight);
+  const scale = Math.min(1, Math.max(0.38, targetHeight / Math.max(contentHeight, 1)));
+  sheet.style.setProperty("--document-print-scale", String(Number(scale.toFixed(3))));
+}
+function applyDocumentTemplate() {
+  const sheet = $("#printDocumentContent");
+  if (!sheet) return;
+  sheet.classList.remove("template-simple", "template-premium", "template-compact");
+  sheet.classList.add(`template-${$("#documentTemplate")?.value || "simple"}`);
+  fitDocumentToSinglePage();
+}
 
 function showDocument(type, number) {
   const entry = scoped(type === "invoice" ? state.invoices : state.quotes).find((record) => record.number === number); if (!entry) return;
@@ -469,18 +500,22 @@ function showDocument(type, number) {
   const company = activeCompany(); const party = partyById(entry.partyId) || {}; const tax = taxAmounts(entry); const title = type === "invoice" ? "TAX INVOICE" : "ESTIMATE"; const heading = type === "invoice" ? "Invoice No." : "Estimate No."; const rateLabel = entry.unit === "Sq. Feet" ? "Rate / Sq. Ft" : "Price / Unit";
   const taxColumn = tax.type === "igst" ? `<td>${money(tax.igst)}<small>IGST ${entry.tax || 0}%</small></td>` : `<td>${money(tax.cgst)}<small>CGST ${Number(entry.tax || 0) / 2}%</small></td><td>${money(tax.sgst)}<small>SGST ${Number(entry.tax || 0) / 2}%</small></td>`;
   const taxSummary = tax.type === "igst" ? `<tr><td>IGST</td><td>${money(tax.base)}</td><td>${entry.tax || 0}%</td><td>${money(tax.igst)}</td></tr>` : `<tr><td>CGST</td><td>${money(tax.base)}</td><td>${Number(entry.tax || 0) / 2}%</td><td>${money(tax.cgst)}</td></tr><tr><td>SGST</td><td>${money(tax.base)}</td><td>${Number(entry.tax || 0) / 2}%</td><td>${money(tax.sgst)}</td></tr>`;
-  $("#printDocumentContent").innerHTML = `<h2 class="reference-doc-title">${type === "invoice" ? "Sale" : "Estimate / Quotation"}</h2><div class="reference-company"><div class="logo-box">${company.name.slice(0, 2).toUpperCase()}</div><div><h1>${company.name}</h1><p>${addressText(company.address)}</p><p>Ph. no.: ${company.phone || "-"}</p></div></div><div class="reference-meta"><section><h3>Bill To:</h3><b>${party.name || "-"}</b><p>${addressText(party.address)}</p><p>Contact No.: ${party.phone || "-"}</p></section><section><h3>Shipping To</h3><p>${addressText(party.address)}</p></section><section><h3>${type === "invoice" ? "Invoice Details" : "Estimate Details"}</h3><p>${heading} ${entry.number}</p><p>Date: ${entry.date}</p><p>State: ${party.address?.state || "-"}</p></section></div><table class="reference-items"><thead><tr><th>#</th><th>Item name</th><th>HSC/SAC</th><th>Quantity</th><th>${rateLabel}</th><th>Discount</th>${tax.type === "igst" ? "<th>IGST</th>" : "<th>CGST</th><th>SGST</th>"}<th>Amount</th></tr></thead><tbody><tr><td>1</td><td><b>${entry.item}</b><small>${entry.size || ""} ${entry.unit}</small></td><td>${entry.hsn || "-"}</td><td>${billQuantity(entry).toLocaleString("en-IN")}</td><td>${money(entry.rate)}</td><td>${money(0)}</td>${taxColumn}<td>${money(tax.total)}</td></tr></tbody><tfoot><tr><td></td><td><b>Total</b></td><td></td><td><b>${billQuantity(entry).toLocaleString("en-IN")}</b></td><td></td><td></td>${tax.type === "igst" ? `<td><b>${money(tax.igst)}</b></td>` : `<td><b>${money(tax.cgst)}</b></td><td><b>${money(tax.sgst)}</b></td>`}<td><b>${money(tax.total)}</b></td></tr></tfoot></table><div class="reference-lower"><table><thead><tr><th>Tax type</th><th>Taxable amount</th><th>Rate</th><th>Tax amount</th></tr></thead><tbody>${taxSummary}</tbody></table><table><thead><tr><th colspan="2">Amounts</th></tr></thead><tbody><tr><td>Sub Total</td><td>${money(tax.base)}</td></tr><tr><td>Total</td><td><b>${money(tax.total)}</b></td></tr><tr><td>Balance</td><td>${money(tax.total)}</td></tr></tbody></table></div><div class="reference-words"><section><h3>Invoice Amount In Words</h3><p>${amountWords(tax.total)}</p></section><section><h3>Description</h3><p>Sale Description</p></section></div><div class="reference-footer"><section><h3>Bank Details</h3><p>Bank Name: ${company.bank.name || "-"}</p><p>Account No.: ${company.bank.accountNumber || "-"}</p><p>IFSC Code: ${company.bank.ifscCode || "-"}</p></section><section><h3>Terms and conditions</h3><p>${company.terms || "-"}</p></section><section><p>For: ${company.name}</p><div class="signature-box">${company.name.slice(0, 2).toUpperCase()}</div><b>Authorized Signatory</b></section></div>`;
+  const adDays = dateDiffDays(entry.campaignFromDate || entry.campaignDate, entry.campaignToDate || entry.campaignDate);
+  $("#printDocumentContent").innerHTML = `<h2 class="reference-doc-title">${type === "invoice" ? "Sale" : "Estimate / Quotation"}</h2><div class="reference-company"><div class="logo-box">${company.name.slice(0, 2).toUpperCase()}</div><div><h1>${company.name}</h1>${addressHtml(company.address, true)}<p>Ph. no.: ${company.phone || "-"}</p></div></div><div class="reference-meta document-meta-two"><section><h3>Bill To:</h3><b>${party.name || "-"}</b>${addressHtml(party.address)}</section><section><h3>${type === "invoice" ? "Invoice Details" : "Estimate Details"}</h3><p>${heading} ${entry.number}</p><p>Date: ${entry.date}</p><p>State: ${party.address?.state || "-"}</p></section></div><table class="reference-items"><thead><tr><th>#</th><th>Item name</th><th>HSC/SAC</th><th>Quantity</th><th>Unit</th><th>${rateLabel}</th>${tax.type === "igst" ? "<th>IGST</th>" : "<th>CGST</th><th>SGST</th>"}<th>Amount</th></tr></thead><tbody><tr><td>1</td><td><b>${entry.item}</b><small>${entry.size || ""}</small></td><td>${entry.hsn || "-"}</td><td>${billQuantity(entry).toLocaleString("en-IN")}</td><td>${entry.unit || "-"}</td><td>${money(entry.rate)}</td>${taxColumn}<td>${money(tax.total)}</td></tr></tbody><tfoot><tr><td></td><td><b>Total</b></td><td></td><td><b>${billQuantity(entry).toLocaleString("en-IN")}</b></td><td></td><td></td>${tax.type === "igst" ? `<td><b>${money(tax.igst)}</b></td>` : `<td><b>${money(tax.cgst)}</b></td><td><b>${money(tax.sgst)}</b></td>`}<td><b>${money(tax.total)}</b></td></tr></tfoot></table><div class="reference-lower"><table><thead><tr><th>Tax type</th><th>Taxable amount</th><th>Rate</th><th>Tax amount</th></tr></thead><tbody>${taxSummary}</tbody></table><table><thead><tr><th colspan="2">Amounts</th></tr></thead><tbody><tr><td>Sub Total</td><td>${money(tax.base)}</td></tr><tr><td>Total</td><td><b>${money(tax.total)}</b></td></tr><tr><td>Balance</td><td>${money(tax.total)}</td></tr></tbody></table></div><div class="reference-words"><section><h3>Invoice Amount In Words</h3><p>${amountWords(tax.total)}</p></section><section><h3>Description</h3><p>Sale Description</p></section></div><div class="reference-footer"><section><h3>Bank Details</h3><p>Bank Name: ${company.bank.name || "-"}</p><p>Account No.: ${company.bank.accountNumber || "-"}</p><p>IFSC Code: ${company.bank.ifscCode || "-"}</p></section><section><h3>Terms and conditions</h3><p>${company.terms || "-"}</p></section><section><p>For: ${company.name}</p><div class="signature-box">${company.name.slice(0, 2).toUpperCase()}</div><b>Authorized Signatory</b></section></div>`;
   const documentTitle = $("#printDocumentContent .reference-doc-title");
   if (documentTitle && type === "invoice") documentTitle.textContent = "Sale Invoice";
   const signatureBox = $("#printDocumentContent .signature-box");
-  if (signatureBox) signatureBox.innerHTML = company.signature ? `<img class="document-signature" src="${company.signature}" alt="${company.name} signature">` : "";
+  if (signatureBox) {
+    signatureBox.classList.toggle("empty-signature", !company.signature);
+    signatureBox.innerHTML = company.signature ? `<img class="document-signature" src="${company.signature}" alt="${company.name} signature">` : "";
+  }
   const documentItems = entry.items?.length ? entry.items : [entry];
   const documentTable = $("#printDocumentContent .reference-items");
-  const documentRows = documentItems.map((item, index) => { const base = lineAmount(item); const itemTax = base * Number(item.tax || 0) / 100; const taxCells = tax.type === "igst" ? `<td>${money(itemTax)}<small>IGST ${item.tax || 0}%</small></td>` : `<td>${money(itemTax / 2)}<small>CGST ${Number(item.tax || 0) / 2}%</small></td><td>${money(itemTax / 2)}<small>SGST ${Number(item.tax || 0) / 2}%</small></td>`; return `<tr><td>${index + 1}</td><td><b>${item.item}</b><small>${item.size || ""} ${item.unit}</small></td><td>${item.hsn || "-"}</td><td>${billQuantity(item).toLocaleString("en-IN")}</td><td>${money(item.rate)}</td><td>${money(0)}</td>${taxCells}<td>${money(base + itemTax)}</td></tr>`; }).join("");
+  const documentRows = documentItems.map((item, index) => { const base = lineAmount(item); const itemTax = base * Number(item.tax || 0) / 100; const taxCells = tax.type === "igst" ? `<td>${money(itemTax)}<small>IGST ${item.tax || 0}%</small></td>` : `<td>${money(itemTax / 2)}<small>CGST ${Number(item.tax || 0) / 2}%</small></td><td>${money(itemTax / 2)}<small>SGST ${Number(item.tax || 0) / 2}%</small></td>`; return `<tr><td>${index + 1}</td><td><b>${item.item}</b><small>${item.size || ""}</small></td><td>${item.hsn || "-"}</td><td>${billQuantity(item).toLocaleString("en-IN")}</td><td>${item.unit || "-"}</td><td>${money(item.rate)}</td>${taxCells}<td>${money(base + itemTax)}</td></tr>`; }).join("");
   const totalQuantity = documentItems.reduce((sum, item) => sum + billQuantity(item), 0);
   if (documentTable) { documentTable.tBodies[0].innerHTML = documentRows; documentTable.tFoot.innerHTML = `<tr><td></td><td><b>Total</b></td><td></td><td><b>${totalQuantity.toLocaleString("en-IN")}</b></td><td></td><td></td>${tax.type === "igst" ? `<td><b>${money(tax.igst)}</b></td>` : `<td><b>${money(tax.cgst)}</b></td><td><b>${money(tax.sgst)}</b></td>`}<td><b>${money(tax.total)}</b></td></tr>`; }
   const details = $("#printDocumentContent .reference-meta section:last-child");
-  if (details) details.insertAdjacentHTML("beforeend", `<p>Status: ${entryStatus(entry, type)}</p>${entry.poNumber ? `<p>PO No.: ${entry.poNumber}</p>` : ""}${entry.campaignFromDate || entry.campaignDate ? `<p>Campaign From: ${entry.campaignFromDate || entry.campaignDate}</p>` : ""}${entry.campaignToDate || entry.campaignDate ? `<p>Campaign To: ${entry.campaignToDate || entry.campaignDate}</p>` : ""}`);
+  if (details) details.insertAdjacentHTML("beforeend", `${entry.poNumber ? `<p>PO No.: ${entry.poNumber}</p>` : ""}${entry.campaignFromDate || entry.campaignDate ? `<p>Campaign From: ${entry.campaignFromDate || entry.campaignDate}</p>` : ""}${entry.campaignToDate || entry.campaignDate ? `<p>Campaign To: ${entry.campaignToDate || entry.campaignDate}</p>` : ""}${adDays ? `<p>Ad Days: ${adDays}</p>` : ""}`);
   const bankDetails = $("#printDocumentContent .reference-footer section:first-child");
   if (bankDetails && company.bank.accountHolder) bankDetails.insertAdjacentHTML("beforeend", `<p>Account Holder: ${company.bank.accountHolder}</p>`);
   const documentTerms = $("#printDocumentContent .reference-footer section:nth-child(2) p");
@@ -492,6 +527,8 @@ function showDocument(type, number) {
     sheet.insertAdjacentHTML("afterbegin", `<img class="document-watermark" src="${company.logo}" alt="">`);
     sheet.querySelectorAll(".logo-box").forEach((box) => { box.innerHTML = `<img class="document-logo" src="${company.logo}" alt="${company.name} logo">`; });
   }
+  applyDocumentTemplate();
+  setTimeout(applyDocumentTemplate, 60);
   $("#documentOverlay").classList.add("show"); $("#documentOverlay").setAttribute("aria-hidden", "false");
 }
 
@@ -836,7 +873,7 @@ function handleDocumentAction(event) {
   const button = event.target.closest("[data-document-id]");
   if (button) showDocument(button.dataset.documentType, button.dataset.documentId);
 }
-$("#invoiceList").addEventListener("click", handleDocumentAction); $("#quoteList").addEventListener("click", handleDocumentAction); $("#invoiceList").addEventListener("change", handleDocumentAction); $("#quoteList").addEventListener("change", handleDocumentAction); $("#closeDocument").addEventListener("click", () => { $("#documentOverlay").classList.remove("show"); $("#documentOverlay").setAttribute("aria-hidden", "true"); }); $("#editDocument").addEventListener("click", () => { if (!openedDocument) return toast("Open an invoice or estimate first."); $("#documentOverlay").classList.remove("show"); $("#documentOverlay").setAttribute("aria-hidden", "true"); startEditDocument(openedDocument.type, openedDocument.number); }); $("#printDocument").addEventListener("click", () => window.print());
+$("#invoiceList").addEventListener("click", handleDocumentAction); $("#quoteList").addEventListener("click", handleDocumentAction); $("#invoiceList").addEventListener("change", handleDocumentAction); $("#quoteList").addEventListener("change", handleDocumentAction); $("#closeDocument").addEventListener("click", () => { $("#documentOverlay").classList.remove("show"); $("#documentOverlay").setAttribute("aria-hidden", "true"); }); $("#editDocument").addEventListener("click", () => { if (!openedDocument) return toast("Open an invoice or estimate first."); $("#documentOverlay").classList.remove("show"); $("#documentOverlay").setAttribute("aria-hidden", "true"); startEditDocument(openedDocument.type, openedDocument.number); }); $("#printDocument").addEventListener("click", () => { applyDocumentTemplate(); window.print(); });
 
 function downloadBlob(blob, filename) { const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = filename; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
 function backupFilename() { return `tbd-billing-backup-${new Date().toISOString().slice(0, 10)}.json`; }
@@ -868,7 +905,7 @@ function importBackupFile(file) {
 }
 function documentFilename(extension) { const title = $("#printDocumentContent .reference-doc-title")?.textContent || "billing-document"; const company = activeCompany().name || "company"; return `${company}-${title}`.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() + `.${extension}`; }
 function pdfEscape(value) { return value.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)").replace(/[^\x20-\x7E]/g, " "); }
-function downloadPdf() { window.print(); }
+function downloadPdf() { fitDocumentToSinglePage(); window.print(); }
 function downloadWord(download = true) {
   const source = $("#printDocumentContent");
   const meta = [...source.querySelectorAll(".reference-meta section")].map((section) => section.innerHTML);
@@ -887,7 +924,8 @@ function downloadWord(download = true) {
   if (download) downloadBlob(blob, documentFilename("doc"));
   return blob;
 }
-$("#downloadDocument").addEventListener("click", () => { if (!$("#printDocumentContent").innerHTML.trim()) return toast("Open an invoice or estimate first."); if ($("#downloadFormat").value === "word") downloadWord(); else { toast("In the print window, choose Save as PDF."); downloadPdf(); } });
+$("#documentTemplate").addEventListener("change", () => { applyDocumentTemplate(); toast("Document template changed."); });
+$("#downloadDocument").addEventListener("click", () => { if (!$("#printDocumentContent").innerHTML.trim()) return toast("Open an invoice or estimate first."); applyDocumentTemplate(); if ($("#downloadFormat").value === "word") downloadWord(); else { toast("In the print window, choose Save as PDF."); downloadPdf(); } });
 $("#loginForm").addEventListener("submit", (event) => { event.preventDefault(); const key = "admin"; if ($("#loginPassword").value !== members[key].password) { loginError("Wrong password. Please try again."); $("#loginPassword").focus(); return; } loginError(""); sessionStorage.setItem("tbd-active-member", key); localStorage.removeItem("tbd-active-member"); $("#loginPassword").value = ""; renderSession(); toast(`Welcome, ${members[key].name}.`); });
 $("#forgotPasswordButton").addEventListener("click", () => {
   loginError("");
