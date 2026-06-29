@@ -26,6 +26,24 @@ let cloudSaveTimer = null;
 let syncingCloud = false;
 function saveMembers() { localStorage.setItem("tbd-members", JSON.stringify(members)); queueCloudSave(); }
 
+function hasBusinessData(data = state) {
+  const company = data.companies?.[0] || {};
+  return Boolean((data.parties || []).length || (data.invoices || []).length || (data.quotes || []).length || (data.transactions || []).length || (data.accountTransactions || []).length || (data.dailyExpenses || []).length || company.logo || company.signature || company.phone || company.gstin || company.name !== defaults.companies[0].name);
+}
+
+function setCloudStatus(status, detail = "") {
+  const button = $("#cloudSyncButton");
+  const info = $("#cloudSyncInfo");
+  const labels = { connected: "Cloud Connected", offline: "Cloud Offline", syncing: "Cloud Syncing" };
+  if (button) {
+    button.classList.remove("connected", "offline", "syncing");
+    button.classList.add(status);
+    button.querySelector("b").textContent = labels[status] || labels.offline;
+    button.title = detail || labels[status] || labels.offline;
+  }
+  if (info) info.textContent = detail || labels[status] || labels.offline;
+}
+
 async function readCloudState() {
   const response = await fetch(cloudApi, { cache: "no-store" });
   if (!response.ok) throw new Error(`Cloud API ${response.status}`);
@@ -47,19 +65,24 @@ async function pushCloudState() {
 
 function queueCloudSave() {
   if (!cloudOnline || syncingCloud) return;
+  setCloudStatus("syncing", "Cloud syncing...");
   clearTimeout(cloudSaveTimer);
   cloudSaveTimer = setTimeout(() => {
-    pushCloudState().catch((error) => {
-      console.error(error);
-      cloudOnline = false;
-      toast("Cloud sync offline. Saved in this browser.");
-    });
+    pushCloudState()
+      .then(() => setCloudStatus("connected", `Cloud connected. Last sync ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`))
+      .catch((error) => {
+        console.error(error);
+        cloudOnline = false;
+        setCloudStatus("offline", "Cloud offline. This system is saved locally only.");
+        toast("Cloud sync offline. Saved in this browser.");
+      });
   }, 300);
 }
 
 async function initCloudSync() {
   if (location.protocol === "file:") return;
   try {
+    setCloudStatus("syncing", "Checking cloud sync...");
     const payload = await readCloudState();
     cloudOnline = true;
     syncingCloud = true;
@@ -73,15 +96,55 @@ async function initCloudSync() {
       state = load();
       renderAll();
       renderSession();
-    } else {
+    } else if (hasBusinessData()) {
       await pushCloudState();
     }
     syncingCloud = false;
+    setCloudStatus("connected", payload.hasData ? "Cloud connected. Shared data loaded." : "Cloud connected. No shared data yet.");
     toast("Cloud sync connected.");
   } catch (error) {
     syncingCloud = false;
     console.warn(error);
+    cloudOnline = false;
+    setCloudStatus("offline", "Cloud offline. This system is saved locally only.");
     toast("Cloud sync offline. Saved in this browser.");
+  }
+}
+
+async function syncCloudNow() {
+  if (location.protocol === "file:") return toast("Open live link to use cloud sync.");
+  setCloudStatus("syncing", "Checking cloud sync...");
+  syncingCloud = true;
+  try {
+    const payload = await readCloudState();
+    cloudOnline = true;
+    if (payload.hasData && payload.state) {
+      localStorage.setItem(storageKey, JSON.stringify(payload.state));
+      if (payload.members?.admin) {
+        Object.keys(members).forEach((key) => delete members[key]);
+        Object.assign(members, { ...defaultMembers, ...payload.members });
+        localStorage.setItem("tbd-members", JSON.stringify(members));
+      }
+      state = load();
+      renderAll();
+      renderSession();
+      setCloudStatus("connected", "Cloud connected. Shared data loaded.");
+      toast("Cloud data loaded.");
+    } else if (hasBusinessData()) {
+      await pushCloudState();
+      setCloudStatus("connected", "Cloud connected. This system data uploaded.");
+      toast("This system data uploaded to cloud.");
+    } else {
+      setCloudStatus("connected", "Cloud connected. No shared data yet.");
+      toast("Cloud connected. Add data and save once.");
+    }
+  } catch (error) {
+    console.error(error);
+    cloudOnline = false;
+    setCloudStatus("offline", "Cloud offline. This system is saved locally only.");
+    toast("Cloud sync offline.");
+  } finally {
+    syncingCloud = false;
   }
 }
 
@@ -942,6 +1005,8 @@ $("#forgotPasswordButton").addEventListener("click", () => {
   loginError("Password updated. Login with new password.", "success");
 });
 $("#logoutButton").addEventListener("click", () => { sessionStorage.removeItem("tbd-active-member"); localStorage.removeItem("tbd-active-member"); renderSession(); });
+$("#cloudSyncButton").addEventListener("click", syncCloudNow);
+$("#cloudSyncNow").addEventListener("click", syncCloudNow);
 
 renderAll();
 renderSession();
