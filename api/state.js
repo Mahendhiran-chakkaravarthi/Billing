@@ -7,14 +7,16 @@ const databaseUrl =
   process.env.DATABASE_URL_POSTGRES_URL ||
   process.env.DATABASE_URL_POSTGRES_PRISMA_URL;
 
-function json(payload, status = 200) {
-  return new Response(JSON.stringify(payload), {
-    status,
-    headers: {
-      "content-type": "application/json; charset=utf-8",
-      "cache-control": "no-store"
-    }
-  });
+function json(response, payload, status = 200) {
+  response.setHeader("content-type", "application/json; charset=utf-8");
+  response.setHeader("cache-control", "no-store");
+  return response.status(status).json(payload);
+}
+
+function requestBody(request) {
+  if (!request.body) return null;
+  if (typeof request.body === "string") return JSON.parse(request.body);
+  return request.body;
 }
 
 async function table(sql) {
@@ -28,9 +30,9 @@ async function table(sql) {
   `;
 }
 
-export default async function handler(request) {
+export default async function handler(request, response) {
   if (!databaseUrl) {
-    return json({ ok: false, error: "DATABASE_URL is not configured" }, 500);
+    return json(response, { ok: false, error: "DATABASE_URL is not configured" }, 500);
   }
 
   const sql = neon(databaseUrl);
@@ -39,7 +41,7 @@ export default async function handler(request) {
   if (request.method === "GET") {
     const rows = await sql`SELECT state_json, members_json, updated_at FROM app_state WHERE id = 1`;
     const row = rows[0];
-    return json({
+    return json(response, {
       ok: true,
       hasData: Boolean(row),
       state: row?.state_json ?? null,
@@ -49,9 +51,9 @@ export default async function handler(request) {
   }
 
   if (request.method === "POST") {
-    const body = await request.json().catch(() => null);
+    const body = requestBody(request);
     if (!body?.state || !body?.members) {
-      return json({ ok: false, error: "Invalid payload" }, 422);
+      return json(response, { ok: false, error: "Invalid payload" }, 422);
     }
 
     await sql`
@@ -64,8 +66,8 @@ export default async function handler(request) {
         updated_at = now()
     `;
 
-    return json({ ok: true });
+    return json(response, { ok: true });
   }
 
-  return json({ ok: false, error: "Method not allowed" }, 405);
+  return json(response, { ok: false, error: "Method not allowed" }, 405);
 }
