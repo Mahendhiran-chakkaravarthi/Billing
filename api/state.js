@@ -1,6 +1,11 @@
 import { neon } from "@neondatabase/serverless";
 
 const defaultMembers = { admin: { name: "Admin", password: "123456" } };
+const databaseUrl =
+  process.env.DATABASE_URL ||
+  process.env.DATABASE_URL_DATABASE_URL ||
+  process.env.DATABASE_URL_POSTGRES_URL ||
+  process.env.DATABASE_URL_POSTGRES_PRISMA_URL;
 
 function json(payload, status = 200) {
   return new Response(JSON.stringify(payload), {
@@ -24,11 +29,11 @@ async function table(sql) {
 }
 
 export default async function handler(request) {
-  if (!process.env.DATABASE_URL) {
+  if (!databaseUrl) {
     return json({ ok: false, error: "DATABASE_URL is not configured" }, 500);
   }
 
-  const sql = neon(process.env.DATABASE_URL);
+  const sql = neon(databaseUrl);
   await table(sql);
 
   if (request.method === "GET") {
@@ -64,4 +69,3 @@ export default async function handler(request) {
 
   return json({ ok: false, error: "Method not allowed" }, 405);
 }
-
