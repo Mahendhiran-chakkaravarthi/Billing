@@ -3,7 +3,7 @@ const storageKey = "tbd-simple-billing";
 const defaults = {
   activeCompanyId: "company-1",
   companies: [{ id: "company-1", name: "TBD Books", logo: "", signature: "", gstin: "", phone: "", address: { line1: "", line2: "", city: "", state: "Tamil Nadu", pincode: "" }, bank: { name: "", accountHolder: "", accountNumber: "", ifscCode: "" }, terms: "Thanks for doing business with us." }],
-  parties: [], invoices: [], quotes: [], transactions: [],
+  parties: [], invoices: [], quotes: [], transactions: [], accountTransactions: [], dailyExpenses: [],
   settings: { invoicePrefix: "INV", quotePrefix: "EST", currency: "Rs." }
 };
 
@@ -12,6 +12,7 @@ const $$ = (selector) => [...document.querySelectorAll(selector)];
 let editingCompanyId = null;
 let editingPartyId = null;
 let editingDocument = null;
+let editingAccountId = null;
 let openedDocument = null;
 let pendingCompanyLogo = "";
 let pendingCompanySignature = "";
@@ -97,7 +98,7 @@ function load() {
     if (!saved) return structuredClone(defaults);
     const result = { ...structuredClone(defaults), ...saved, settings: { ...defaults.settings, ...saved.settings } };
     const fallbackId = result.activeCompanyId || "company-1";
-    ["parties", "invoices", "quotes", "transactions"].forEach((key) => {
+    ["parties", "invoices", "quotes", "transactions", "accountTransactions", "dailyExpenses"].forEach((key) => {
       result[key] = (result[key] || []).map((entry) => ({ ...entry, companyId: entry.companyId || fallbackId }));
     });
     result.parties = result.parties.map((party) => ({ ...party, address: typeof party.address === "object" ? party.address : { line1: party.address || "", line2: "", city: "", state: "Tamil Nadu", pincode: "" } }));
@@ -147,6 +148,9 @@ function statusSlug(status) { return status.toLowerCase().replace(/\s+/g, "-"); 
 function statusStyle(status) { const colors = statusColors[status] || ["#68758e", "#a7b1c2"]; return `--status-color:${colors[0]};--status-soft:${colors[1]};--status-shadow:${colors[0]}33`; }
 function statusSelect(type, entry) { return `<select class="status-select" data-status-type="${type}" data-status-id="${entry.number}" aria-label="${entry.number} status">${statusOptions[type].map((status) => `<option value="${status}" ${entryStatus(entry, type) === status ? "selected" : ""}>${status}</option>`).join("")}</select>`; }
 function statusSummary(entries, type) { return statusOptions[type].reduce((result, status) => ({ ...result, [status]: entries.filter((entry) => entryStatus(entry, type) === status).length }), {}); }
+const accountTypes = ["Partner Capital", "Business Income", "Expense", "Partner Withdrawal"];
+const expenseCategories = ["Welding", "Material", "Petrol", "Food", "Labour", "Office Rent", "EB Bill", "Salary", "Milk", "Poo", "Transport", "Miscellaneous"];
+const workTypes = ["Mini Hoarding", "Hoarding", "Lamp Post", "Barricade", "Wall Painting", "Vinyl", "Digital Ads"];
 
 function toast(message) { $("#toast").textContent = message; $("#toast").classList.add("show"); setTimeout(() => $("#toast").classList.remove("show"), 1800); }
 function loginError(message = "", type = "error") { $("#loginError").textContent = message; $("#loginError").className = `login-error${message ? " show" : ""}${type === "success" ? " success" : ""}${type === "info" ? " info" : ""}`; }
@@ -311,9 +315,131 @@ function rows(entries, type) { return entries.slice().reverse().map((entry) => `
 function renderSales() { const invoices = scoped(state.invoices); const quotes = scoped(state.quotes); $("#invoiceCount").textContent = `${invoices.length} invoices`; $("#quoteCount").textContent = `${quotes.length} estimates`; $("#invoiceList").innerHTML = rows(invoices, "invoice"); $("#quoteList").innerHTML = rows(quotes, "quote"); }
 function renderHome() { const invoices = scoped(state.invoices); const transactions = scoped(state.transactions); $("#partyMetric").textContent = scoped(state.parties).length; $("#invoiceMetric").textContent = invoices.length; $("#salesMetric").textContent = money(invoices.reduce((sum, entry) => sum + lineAmount(entry), 0)); $("#quoteMetric").textContent = scoped(state.quotes).length; $("#homeTransactions").innerHTML = transactions.slice().reverse().slice(0, 5).map((entry) => `<div class="record"><div><strong>${entry.type}</strong><small>${entry.reference} | ${partyName(entry.partyId)}</small></div><strong>${money(entry.amount)}</strong></div>`).join("") || "<p class=\"muted\">No transactions yet.</p>"; }
 function renderTransactions() { $("#transactionList").innerHTML = scoped(state.transactions).slice().reverse().map((entry) => `<tr><td>${entry.date}</td><td>${entry.type}</td><td>${entry.reference}</td><td>${partyName(entry.partyId)}</td><td class="right">${money(entry.amount)}</td></tr>`).join("") || "<tr><td colspan=\"5\" class=\"muted\">No transactions yet.</td></tr>"; }
+function accountEntries() { return state.accountTransactions || []; }
+function dailyExpenseEntries() { return state.dailyExpenses || []; }
+function companyName(entry) { return state.companies.find((company) => company.id === entry.companyId)?.name || entry.companyName || "-"; }
+function accountTotal(entries, type) { return entries.filter((entry) => entry.type === type).reduce((sum, entry) => sum + Number(entry.amount || 0), 0); }
+function accountBalance(entries) { return accountTotal(entries, "Partner Capital") + accountTotal(entries, "Business Income") - accountTotal(entries, "Expense") - accountTotal(entries, "Partner Withdrawal"); }
+function accountBreakdown(entries) { return `Capital ${money(accountTotal(entries, "Partner Capital"))} | Income ${money(accountTotal(entries, "Business Income"))} | Expense ${money(accountTotal(entries, "Expense"))} | Withdrawal ${money(accountTotal(entries, "Partner Withdrawal"))}`; }
+function uniqueValues(values) { return [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b)); }
+function startOfWeek(date) { const result = new Date(date); const day = result.getDay() || 7; result.setDate(result.getDate() - day + 1); return result.toISOString().slice(0, 10); }
+function accountFilterRange() {
+  const period = $("#accountFilterPeriod")?.value || "all";
+  const now = new Date();
+  if (period === "today") return { from: today(), to: today() };
+  if (period === "week") return { from: startOfWeek(now), to: today() };
+  if (period === "month") return { from: `${today().slice(0, 8)}01`, to: today() };
+  if (period === "custom") return { from: $("#accountFilterFrom").value, to: $("#accountFilterTo").value };
+  return { from: "", to: "" };
+}
+function matchesAccountFilters(entry) {
+  const companyId = $("#accountFilterCompany")?.value || "all";
+  const { from, to } = accountFilterRange();
+  const date = entry.date || "";
+  if (companyId !== "all" && entry.companyId !== companyId) return false;
+  if (from && date < from) return false;
+  if (to && date > to) return false;
+  return true;
+}
+function filteredAccountEntries() { return accountEntries().filter(matchesAccountFilters); }
+function filteredDailyExpenseEntries() { return dailyExpenseEntries().filter(matchesAccountFilters); }
+function expenseCategoryTotals(entries) {
+  return expenseCategories.map((category) => ({ category, total: entries.filter((entry) => entry.type === "Expense" && (entry.expenseCategory || "Miscellaneous") === category).reduce((sum, entry) => sum + Number(entry.amount || 0), 0) })).filter((entry) => entry.total > 0);
+}
+function dailyCloseGroups(entries) {
+  const groups = new Map();
+  entries.filter((entry) => entry.closed).forEach((entry) => {
+    const key = `${entry.companyId}|${entry.date}`;
+    const group = groups.get(key) || { date: entry.date, companyId: entry.companyId, companyName: companyName(entry), count: 0, total: 0 };
+    group.count += 1;
+    group.total += Number(entry.amount || 0);
+    groups.set(key, group);
+  });
+  return [...groups.values()].sort((a, b) => `${b.date}${b.companyName}`.localeCompare(`${a.date}${a.companyName}`));
+}
+function resetAccountForm() {
+  editingAccountId = null;
+  $("#accountFormTitle").textContent = "Add Transaction";
+  $("#accountForm").reset();
+  $("#accountDate").value = today();
+  $("#accountCompany").value = state.activeCompanyId;
+}
+function resetDailyExpenseForm() {
+  $("#dailyExpenseForm").reset();
+  $("#dailyExpenseDate").value = today();
+  $("#dailyExpenseCompany").value = state.activeCompanyId;
+  $("#dailyExpenseCategory").value = "Miscellaneous";
+  $("#dayCloseDate").value = $("#dailyExpenseDate").value;
+  $("#dayCloseCompany").value = $("#dailyExpenseCompany").value;
+}
+function dailyExpenseTotal(date, companyId) {
+  return dailyExpenseEntries().filter((entry) => entry.date === date && entry.companyId === companyId && !entry.closed).reduce((sum, entry) => sum + Number(entry.amount || 0), 0);
+}
+function updateDayCloseTotal() {
+  const date = $("#dayCloseDate")?.value || today();
+  const companyId = $("#dayCloseCompany")?.value || state.activeCompanyId;
+  if ($("#dayCloseTotal")) $("#dayCloseTotal").textContent = money(dailyExpenseTotal(date, companyId));
+}
+function renderAccounts() {
+  const allEntries = accountEntries();
+  const entries = filteredAccountEntries();
+  $("#accountCapitalMetric").textContent = money(accountTotal(entries, "Partner Capital"));
+  $("#accountIncomeMetric").textContent = money(accountTotal(entries, "Business Income"));
+  $("#accountExpenseMetric").textContent = money(accountTotal(entries, "Expense"));
+  $("#accountWithdrawalMetric").textContent = money(accountTotal(entries, "Partner Withdrawal"));
+  $("#accountCashMetric").textContent = money(accountBalance(entries));
+  const accountCompanyValue = $("#accountCompany").value || state.activeCompanyId;
+  const dailyCompanyValue = $("#dailyExpenseCompany").value || state.activeCompanyId;
+  const closeCompanyValue = $("#dayCloseCompany").value || dailyCompanyValue;
+  const filterCompanyValue = $("#accountFilterCompany").value || "all";
+  $("#accountCompany").innerHTML = state.companies.map((company) => `<option value="${company.id}">${company.name}</option>`).join("");
+  $("#accountCompany").value = state.companies.some((company) => company.id === accountCompanyValue) ? accountCompanyValue : state.companies[0]?.id || "";
+  $("#accountFilterCompany").innerHTML = `<option value="all">All Companies</option>${state.companies.map((company) => `<option value="${company.id}">${company.name}</option>`).join("")}`;
+  $("#accountFilterCompany").value = filterCompanyValue === "all" || state.companies.some((company) => company.id === filterCompanyValue) ? filterCompanyValue : "all";
+  $("#accountExpenseCategory").innerHTML = `<option value="">Optional</option>${expenseCategories.map((name) => `<option>${name}</option>`).join("")}`;
+  $("#accountWorkType").innerHTML = `<option value="">Optional</option>${workTypes.map((name) => `<option>${name}</option>`).join("")}`;
+  ["dailyExpenseCompany", "dayCloseCompany"].forEach((id) => { $(`#${id}`).innerHTML = state.companies.map((company) => `<option value="${company.id}">${company.name}</option>`).join(""); });
+  if (!$("#dailyExpenseDate").value) $("#dailyExpenseDate").value = today();
+  if (!$("#dayCloseDate").value) $("#dayCloseDate").value = today();
+  $("#dailyExpenseCompany").value = state.companies.some((company) => company.id === dailyCompanyValue) ? dailyCompanyValue : state.companies[0]?.id || "";
+  $("#dayCloseCompany").value = state.companies.some((company) => company.id === closeCompanyValue) ? closeCompanyValue : $("#dailyExpenseCompany").value;
+  $("#dailyExpenseCategory").innerHTML = expenseCategories.map((name) => `<option>${name}</option>`).join("");
+  $("#dailyExpenseWorkType").innerHTML = `<option value="">Optional</option>${workTypes.map((name) => `<option>${name}</option>`).join("")}`;
+  $("#accountPartnerList").innerHTML = uniqueValues(allEntries.map((entry) => entry.partnerName)).map((name) => `<option value="${name}"></option>`).join("");
+  const reportCompanies = $("#accountFilterCompany").value === "all" ? state.companies : state.companies.filter((company) => company.id === $("#accountFilterCompany").value);
+  const companyRows = reportCompanies.map((company) => {
+    const companyEntries = entries.filter((entry) => entry.companyId === company.id || (!entry.companyId && entry.companyName === company.name));
+    return `<article class="record account-record"><div><strong>${company.name}</strong><small>${accountBreakdown(companyEntries)}</small></div><strong>${money(accountBalance(companyEntries))}</strong></article>`;
+  }).join("");
+  $("#companyBalanceCount").textContent = `${reportCompanies.length} companies`;
+  $("#companyBalanceList").innerHTML = companyRows || "<p class=\"muted\">No companies yet.</p>";
+  const partners = uniqueValues(entries.map((entry) => entry.partnerName));
+  $("#partnerBalanceCount").textContent = `${partners.length} partners`;
+  $("#partnerBalanceList").innerHTML = partners.map((partner) => {
+    const partnerEntries = entries.filter((entry) => entry.partnerName === partner);
+    const capital = accountTotal(partnerEntries, "Partner Capital");
+    const withdrawal = accountTotal(partnerEntries, "Partner Withdrawal");
+    return `<article class="record account-record"><div><strong>${partner}</strong><small>Capital ${money(capital)} | Withdrawal ${money(withdrawal)}</small></div><strong>${money(capital - withdrawal)}</strong></article>`;
+  }).join("") || "<p class=\"muted\">No partner entries yet.</p>";
+  const categoryRows = expenseCategoryTotals(entries);
+  $("#expenseCategoryCount").textContent = `${categoryRows.length} categories`;
+  $("#expenseCategoryList").innerHTML = categoryRows.map((entry) => `<article class="record account-record"><div><strong>${entry.category}</strong><small>Expense category total</small></div><strong>${money(entry.total)}</strong></article>`).join("") || "<p class=\"muted\">No expenses for this filter.</p>";
+  $("#accountCount").textContent = `${entries.length} transactions`;
+  $("#accountList").innerHTML = entries.slice().reverse().map((entry) => {
+    const actions = entry.source === "daily-expense-close" ? "<span class=\"muted\">Closed day</span>" : `<button class="text-button" type="button" data-account-edit="${entry.id}">Edit</button><button class="delete-button" type="button" data-account-delete="${entry.id}">Delete</button>`;
+    return `<tr><td>${entry.date || "-"}</td><td>${companyName(entry)}</td><td><strong>${entry.type}</strong>${entry.note ? `<small class="muted">${entry.note}</small>` : ""}</td><td>${entry.partnerName || "-"}</td><td>${entry.clientName || "-"}</td><td>${entry.expenseCategory || "-"}</td><td>${entry.workType || "-"}</td><td>${entry.paymentMode || "-"}</td><td class="right">${money(entry.amount)}</td><td>${actions}</td></tr>`;
+  }).join("") || "<tr><td colspan=\"10\" class=\"muted\">No account transactions yet.</td></tr>";
+  const dailyEntries = filteredDailyExpenseEntries();
+  $("#dailyExpenseCount").textContent = `${dailyEntries.length} entries`;
+  $("#dailyExpenseList").innerHTML = dailyEntries.slice().reverse().map((entry) => `<tr><td>${entry.date || "-"}</td><td>${companyName(entry)}</td><td>${entry.expenseCategory || "-"}</td><td>${entry.workType || "-"}</td><td>${entry.paymentMode || "-"}</td><td><span class="status-pill" style="${entry.closed ? "--status-color:#2dbb91;--status-shadow:#2dbb9133" : "--status-color:#ffb23d;--status-shadow:#ffb23d33"}">${entry.closed ? "Closed" : "Open"}</span></td><td>${entry.note || "-"}</td><td class="right">${money(entry.amount)}</td><td>${entry.closed ? "-" : `<button class="delete-button" type="button" data-daily-expense-delete="${entry.id}">Delete</button>`}</td></tr>`).join("") || "<tr><td colspan=\"9\" class=\"muted\">No daily expenses yet.</td></tr>";
+  const closeGroups = dailyCloseGroups(dailyEntries);
+  $("#dayCloseHistoryCount").textContent = `${closeGroups.length} days`;
+  $("#dayCloseHistoryList").innerHTML = closeGroups.map((group) => `<tr><td>${group.date}</td><td>${group.companyName}</td><td>${group.count}</td><td class="right">${money(group.total)}</td><td><button class="text-button" type="button" data-reopen-day="${group.date}" data-reopen-company="${group.companyId}">Reopen</button></td></tr>`).join("") || "<tr><td colspan=\"5\" class=\"muted\">No closed days yet.</td></tr>";
+  updateDayCloseTotal();
+}
 function cleanPhone(value) { return String(value || "").replace(/\D/g, ""); }
 function renderSettings() { $("#invoicePrefix").value = state.settings.invoicePrefix; $("#quotePrefix").value = state.settings.quotePrefix; $("#currency").value = state.settings.currency; $("#recoveryPhone").value = members.admin.recoveryPhone || ""; $("#settingsPassword").value = ""; $("#settingsPasswordConfirm").value = ""; }
-function renderAll() { renderCompany(); renderParties(); renderSales(); renderHome(); renderTransactions(); renderSettings(); updateSaleCalculation("invoice"); updateSaleCalculation("quote"); }
+function renderAll() { renderCompany(); renderParties(); renderSales(); renderHome(); renderTransactions(); renderAccounts(); renderSettings(); updateSaleCalculation("invoice"); updateSaleCalculation("quote"); }
 
 function updateSaleCalculation(kind) {
   const key = kind === "invoice" ? "invoice" : "quote";
@@ -439,6 +565,195 @@ function saveParty(keepOpen) { const party = { id: editingPartyId || uid(), comp
 $("#partyForm").addEventListener("submit", (event) => { event.preventDefault(); saveParty(false); });
 $("#savePartyNew").addEventListener("click", () => { if (!$("#partyForm").reportValidity()) return; saveParty(true); $("#partyName").focus(); });
 $("#closePartyForm").addEventListener("click", () => { resetPartyForm(); $("#partyForm").classList.add("hidden"); });
+
+function editAccountEntry(id) {
+  const entry = accountEntries().find((item) => item.id === id);
+  if (!entry) return;
+  editingAccountId = id;
+  $("#accountFormTitle").textContent = "Edit Transaction";
+  $("#accountDate").value = entry.date || today();
+  $("#accountCompany").value = entry.companyId || "";
+  $("#accountType").value = entry.type || "Partner Capital";
+  $("#accountPartner").value = entry.partnerName || "";
+  $("#accountClient").value = entry.clientName || "";
+  $("#accountExpenseCategory").value = entry.expenseCategory || "";
+  $("#accountWorkType").value = entry.workType || "";
+  $("#accountAmount").value = entry.amount || "";
+  $("#accountPaymentMode").value = entry.paymentMode || "Cash";
+  $("#accountNote").value = entry.note || "";
+  $("#accountDate").focus();
+}
+
+function csvCell(value) { return `"${String(value ?? "").replace(/"/g, '""')}"`; }
+function downloadCsv(filename, headers, rows) {
+  const csv = [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n");
+  downloadBlob(new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" }), filename);
+}
+function closedDailyExpenseTotal(date, companyId) {
+  return dailyExpenseEntries().filter((entry) => entry.date === date && entry.companyId === companyId && entry.closed).reduce((sum, entry) => sum + Number(entry.amount || 0), 0);
+}
+
+$("[data-account-tab=\"main\"]").addEventListener("click", () => {
+  $$(".account-tabs button").forEach((button) => button.classList.toggle("active", button.dataset.accountTab === "main"));
+  $("#accountMainTab").classList.add("active");
+  $("#accountDailyTab").classList.remove("active");
+});
+$("[data-account-tab=\"daily\"]").addEventListener("click", () => {
+  $$(".account-tabs button").forEach((button) => button.classList.toggle("active", button.dataset.accountTab === "daily"));
+  $("#accountMainTab").classList.remove("active");
+  $("#accountDailyTab").classList.add("active");
+  resetDailyExpenseForm();
+  updateDayCloseTotal();
+});
+["accountFilterCompany", "accountFilterPeriod", "accountFilterFrom", "accountFilterTo"].forEach((id) => $(`#${id}`).addEventListener("input", renderAccounts));
+$("#resetAccountFilters").addEventListener("click", () => {
+  $("#accountFilterCompany").value = "all";
+  $("#accountFilterPeriod").value = "all";
+  $("#accountFilterFrom").value = "";
+  $("#accountFilterTo").value = "";
+  renderAccounts();
+});
+$("#newAccountEntry").addEventListener("click", () => { setView("accounts"); resetAccountForm(); $("#accountDate").focus(); });
+$("#cancelAccountEdit").addEventListener("click", resetAccountForm);
+$("#accountForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  state.accountTransactions = state.accountTransactions || [];
+  const company = state.companies.find((item) => item.id === $("#accountCompany").value);
+  const amount = Number($("#accountAmount").value || 0);
+  if (!company) return toast("Add or select a company first.");
+  if (amount <= 0) return toast("Enter a valid amount.");
+  const entry = {
+    id: editingAccountId || uid(),
+    date: $("#accountDate").value || today(),
+    companyId: company.id,
+    companyName: company.name,
+    type: $("#accountType").value,
+    partnerName: $("#accountPartner").value.trim(),
+    clientName: $("#accountClient").value.trim(),
+    expenseCategory: $("#accountExpenseCategory").value,
+    workType: $("#accountWorkType").value,
+    amount,
+    paymentMode: $("#accountPaymentMode").value,
+    note: $("#accountNote").value.trim()
+  };
+  const existing = state.accountTransactions.find((item) => item.id === editingAccountId);
+  if (existing) Object.assign(existing, entry);
+  else state.accountTransactions.push(entry);
+  resetAccountForm();
+  save();
+  renderAll();
+  toast(existing ? "Account transaction updated." : "Account transaction saved.");
+});
+$("#accountList").addEventListener("click", (event) => {
+  const edit = event.target.closest("[data-account-edit]");
+  if (edit) return editAccountEntry(edit.dataset.accountEdit);
+  const remove = event.target.closest("[data-account-delete]");
+  if (!remove) return;
+  if (!window.confirm("Delete this account transaction?")) return;
+  state.accountTransactions = state.accountTransactions || [];
+  state.accountTransactions = state.accountTransactions.filter((entry) => entry.id !== remove.dataset.accountDelete);
+  if (editingAccountId === remove.dataset.accountDelete) resetAccountForm();
+  save();
+  renderAll();
+  toast("Account transaction deleted.");
+});
+$("#dailyExpenseForm").addEventListener("submit", (event) => {
+  event.preventDefault();
+  state.dailyExpenses = state.dailyExpenses || [];
+  const company = state.companies.find((item) => item.id === $("#dailyExpenseCompany").value);
+  const amount = Number($("#dailyExpenseAmount").value || 0);
+  if (!company) return toast("Add or select a company first.");
+  if (amount <= 0) return toast("Enter a valid amount.");
+  state.dailyExpenses.push({
+    id: uid(),
+    date: $("#dailyExpenseDate").value || today(),
+    companyId: company.id,
+    companyName: company.name,
+    expenseCategory: $("#dailyExpenseCategory").value || "Miscellaneous",
+    workType: $("#dailyExpenseWorkType").value,
+    amount,
+    paymentMode: $("#dailyExpensePaymentMode").value,
+    note: $("#dailyExpenseNote").value.trim(),
+    closed: false
+  });
+  const closeDate = $("#dailyExpenseDate").value || today();
+  const closeCompany = company.id;
+  resetDailyExpenseForm();
+  $("#dayCloseDate").value = closeDate;
+  $("#dayCloseCompany").value = closeCompany;
+  save();
+  renderAll();
+  toast("Daily expense saved.");
+});
+$("#dailyExpenseList").addEventListener("click", (event) => {
+  const remove = event.target.closest("[data-daily-expense-delete]");
+  if (!remove) return;
+  if (!window.confirm("Delete this daily expense?")) return;
+  state.dailyExpenses = dailyExpenseEntries().filter((entry) => entry.id !== remove.dataset.dailyExpenseDelete);
+  save();
+  renderAll();
+  toast("Daily expense deleted.");
+});
+$("#dayCloseHistoryList").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-reopen-day]");
+  if (!button) return;
+  const date = button.dataset.reopenDay;
+  const companyId = button.dataset.reopenCompany;
+  if (!window.confirm("Reopen this closed day?")) return;
+  dailyExpenseEntries().filter((entry) => entry.date === date && entry.companyId === companyId && entry.closed).forEach((entry) => {
+    entry.closed = false;
+    delete entry.closedAt;
+  });
+  state.accountTransactions = accountEntries().filter((entry) => entry.id !== `daily-close-${companyId}-${date}`);
+  save();
+  renderAll();
+  toast("Day reopened.");
+});
+["dayCloseDate", "dayCloseCompany"].forEach((id) => $(`#${id}`).addEventListener("input", updateDayCloseTotal));
+$("#closeDailyExpenses").addEventListener("click", () => {
+  state.dailyExpenses = state.dailyExpenses || [];
+  state.accountTransactions = state.accountTransactions || [];
+  const date = $("#dayCloseDate").value || today();
+  const company = state.companies.find((item) => item.id === $("#dayCloseCompany").value);
+  if (!company) return toast("Select company.");
+  const openEntries = dailyExpenseEntries().filter((entry) => entry.date === date && entry.companyId === company.id && !entry.closed);
+  const openTotal = openEntries.reduce((sum, entry) => sum + Number(entry.amount || 0), 0);
+  if (openTotal <= 0) return toast("No open daily expenses for this date.");
+  openEntries.forEach((entry) => { entry.closed = true; entry.closedAt = new Date().toISOString(); });
+  const total = closedDailyExpenseTotal(date, company.id);
+  const closeKey = `daily-close-${company.id}-${date}`;
+  const summary = {
+    id: closeKey,
+    date,
+    companyId: company.id,
+    companyName: company.name,
+    type: "Expense",
+    partnerName: "",
+    clientName: "",
+    expenseCategory: "Miscellaneous",
+    workType: "",
+    amount: total,
+    paymentMode: "Cash",
+    note: `Daily expenses closed for ${date}`,
+    source: "daily-expense-close"
+  };
+  const existing = state.accountTransactions.find((entry) => entry.id === closeKey);
+  if (existing) Object.assign(existing, summary);
+  else state.accountTransactions.push(summary);
+  save();
+  renderAll();
+  toast("Daily expenses closed to main accounts.");
+});
+$("#downloadAccountsCsv").addEventListener("click", () => {
+  const headers = ["Date", "Company", "Transaction Type", "Partner", "Client", "Expense Category", "Work Type", "Payment Mode", "Amount", "Note"];
+  const rows = filteredAccountEntries().map((entry) => [entry.date, companyName(entry), entry.type, entry.partnerName, entry.clientName, entry.expenseCategory, entry.workType, entry.paymentMode, entry.amount, entry.note]);
+  downloadCsv(`accounts-${today()}.csv`, headers, rows);
+});
+$("#downloadDailyExpensesCsv").addEventListener("click", () => {
+  const headers = ["Date", "Company", "Expense Category", "Work Type", "Payment Mode", "Status", "Amount", "Note"];
+  const rows = filteredDailyExpenseEntries().map((entry) => [entry.date, companyName(entry), entry.expenseCategory, entry.workType, entry.paymentMode, entry.closed ? "Closed" : "Open", entry.amount, entry.note]);
+  downloadCsv(`daily-expenses-${today()}.csv`, headers, rows);
+});
 
 function saveSale(kind) {
   return (event) => {

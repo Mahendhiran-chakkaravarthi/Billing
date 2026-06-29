@@ -66,6 +66,7 @@
             <button class="nav-child" type="button" data-view="sale" title="Sale Invoice">Sale Invoice</button>
             <button class="nav-child" type="button" data-view="estimate" title="Estimate / Quotation">Estimate / Quotation</button>
           </div>
+          <button class="nav-item" type="button" data-view="accounts" title="Accounts">Accounts</button>
           <button class="nav-item last" id="settingsNav" type="button" title="Settings">Settings</button>
           <div class="settings-children" id="settingsChildren">
             <button class="nav-child" type="button" data-view="settings" title="General">General</button>
@@ -172,9 +173,69 @@
             <label>Confirm Login Password<input id="settingsPasswordConfirm" type="password" minlength="6" placeholder="Confirm new password"></label>
             <button class="primary" type="submit">Save General Settings</button>
             <h2>Backup / Transfer</h2>
-            <p class="muted">Move companies, logo, signature, invoices, estimates and parties to another system.</p>
+            <p class="muted">Move companies, logo, signature, invoices, estimates, accounts and parties to another system.</p>
             <div class="backup-actions"><button class="secondary" type="button" id="exportBackup">Export All Data</button><label class="file-button">Import Backup<input id="importBackup" type="file" accept="application/json"></label></div>
           </form>
+        </section>
+
+        <section class="view" id="accountsView" data-title="Accounts">
+          <div class="heading"><div><p>Accounts</p><h1>Company Accounts</h1></div><div class="heading-actions"><button class="secondary" type="button" id="downloadAccountsCsv">Download Accounts</button><button class="secondary" type="button" id="downloadDailyExpensesCsv">Download Daily Expenses</button><button class="primary" type="button" id="newAccountEntry">+ Add Transaction</button></div></div>
+          <div class="metrics account-metrics">
+            <article><span>Total Capital</span><strong id="accountCapitalMetric">Rs. 0.00</strong></article>
+            <article><span>Total Income</span><strong id="accountIncomeMetric">Rs. 0.00</strong></article>
+            <article><span>Total Expense</span><strong id="accountExpenseMetric">Rs. 0.00</strong></article>
+            <article><span>Partner Withdrawal</span><strong id="accountWithdrawalMetric">Rs. 0.00</strong></article>
+            <article><span>Cash Balance</span><strong id="accountCashMetric">Rs. 0.00</strong></article>
+          </div>
+          <div class="account-tabs"><button class="active" type="button" data-account-tab="main">Main Accounts</button><button type="button" data-account-tab="daily">Daily Expenses</button></div>
+          <section class="panel account-filters">
+            <label>Company<select id="accountFilterCompany"></select></label>
+            <label>Period<select id="accountFilterPeriod"><option value="all">All Time</option><option value="today">Today</option><option value="week">This Week</option><option value="month">This Month</option><option value="custom">Custom</option></select></label>
+            <label>From<input id="accountFilterFrom" type="date"></label>
+            <label>To<input id="accountFilterTo" type="date"></label>
+            <button class="secondary" type="button" id="resetAccountFilters">Reset</button>
+          </section>
+          <div class="account-tab active" id="accountMainTab">
+          <div class="account-layout">
+            <form class="panel form account-form" id="accountForm">
+              <h2 id="accountFormTitle">Add Transaction</h2>
+              <div class="two"><label>Date<input id="accountDate" type="date"></label><label>Company Name<select id="accountCompany" required></select></label></div>
+              <div class="two"><label>Transaction Type<select id="accountType"><option>Partner Capital</option><option>Business Income</option><option>Expense</option><option>Partner Withdrawal</option></select></label><label>Payment Mode<select id="accountPaymentMode"><option>Cash</option><option>Bank</option><option>UPI</option><option>Card</option><option>Cheque</option></select></label></div>
+              <div class="two"><label>Partner Name<input id="accountPartner" list="accountPartnerList" placeholder="Optional"><datalist id="accountPartnerList"></datalist></label><label>Client Name<input id="accountClient" placeholder="Optional"></label></div>
+              <div class="two"><label>Expense Category<select id="accountExpenseCategory"></select></label><label>Work Type<select id="accountWorkType"></select></label></div>
+              <label>Amount<input id="accountAmount" type="number" min="0" step="0.01" required></label>
+              <label>Note<textarea id="accountNote" placeholder="Optional"></textarea></label>
+              <div class="account-actions"><button class="secondary" type="button" id="cancelAccountEdit">Clear</button><button class="primary" type="submit">Save Transaction</button></div>
+            </form>
+            <div class="account-side">
+              <section class="panel list-panel account-balance-panel"><div class="panel-title"><h2>Company Balance</h2><span id="companyBalanceCount"></span></div><div id="companyBalanceList"></div></section>
+              <section class="panel list-panel account-balance-panel"><div class="panel-title"><h2>Partner Balance</h2><span id="partnerBalanceCount"></span></div><div id="partnerBalanceList"></div></section>
+              <section class="panel list-panel account-balance-panel wide-account-report"><div class="panel-title"><h2>Expense Category Report</h2><span id="expenseCategoryCount"></span></div><div id="expenseCategoryList"></div></section>
+            </div>
+          </div>
+          <section class="panel list-panel"><div class="panel-title"><h2>Transaction List</h2><span id="accountCount"></span></div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Company</th><th>Type</th><th>Partner</th><th>Client</th><th>Category</th><th>Work</th><th>Mode</th><th class="right">Amount</th><th>Action</th></tr></thead><tbody id="accountList"></tbody></table></div></section>
+          </div>
+          <div class="account-tab" id="accountDailyTab">
+            <div class="account-layout">
+              <form class="panel form account-form" id="dailyExpenseForm">
+                <h2>Daily Expense Entry</h2>
+                <div class="two"><label>Date<input id="dailyExpenseDate" type="date"></label><label>Company Name<select id="dailyExpenseCompany" required></select></label></div>
+                <div class="two"><label>Expense Category<select id="dailyExpenseCategory"></select></label><label>Payment Mode<select id="dailyExpensePaymentMode"><option>Cash</option><option>Bank</option><option>UPI</option><option>Card</option><option>Cheque</option></select></label></div>
+                <div class="two"><label>Work Type<select id="dailyExpenseWorkType"></select></label><label>Amount<input id="dailyExpenseAmount" type="number" min="0" step="0.01" required></label></div>
+                <label>Note<textarea id="dailyExpenseNote" placeholder="Tea, food, petrol bill, small purchase..."></textarea></label>
+                <button class="primary" type="submit">Save Daily Expense</button>
+              </form>
+              <section class="panel form account-form">
+                <h2>Day Close</h2>
+                <div class="two"><label>Date<input id="dayCloseDate" type="date"></label><label>Company Name<select id="dayCloseCompany"></select></label></div>
+                <div class="calculation"><span>Open daily total</span><strong id="dayCloseTotal">Rs. 0.00</strong></div>
+                <button class="primary" type="button" id="closeDailyExpenses">Close Day to Main Accounts</button>
+                <p class="muted">Closed total will appear in Main Accounts as one Expense entry.</p>
+              </section>
+            </div>
+            <section class="panel list-panel"><div class="panel-title"><h2>Daily Expenses</h2><span id="dailyExpenseCount"></span></div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Company</th><th>Category</th><th>Work</th><th>Mode</th><th>Status</th><th>Note</th><th class="right">Amount</th><th>Action</th></tr></thead><tbody id="dailyExpenseList"></tbody></table></div></section>
+            <section class="panel list-panel"><div class="panel-title"><h2>Day Close History</h2><span id="dayCloseHistoryCount"></span></div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Company</th><th>Entries</th><th class="right">Amount</th><th>Action</th></tr></thead><tbody id="dayCloseHistoryList"></tbody></table></div></section>
+          </div>
         </section>
 
         <section class="view" id="transactionsView" data-title="Transactions">
