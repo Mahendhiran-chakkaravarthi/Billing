@@ -214,12 +214,29 @@ function resolvedTaxType(entry) { if (entry.taxType && entry.taxType !== "auto")
 function taxAmounts(entry) { const base = lineAmount(entry); const totalTax = Array.isArray(entry.items) ? entry.items.reduce((sum, item) => sum + lineAmount(item) * Number(item.tax || 0) / 100, 0) : base * Number(entry.tax || 0) / 100; const type = resolvedTaxType(entry); return { base, type, cgst: type === "cgst-sgst" ? totalTax / 2 : 0, sgst: type === "cgst-sgst" ? totalTax / 2 : 0, igst: type === "igst" ? totalTax : 0, total: base + totalTax }; }
 const statusOptions = { invoice: ["Unpaid", "Part Paid", "Paid", "Overdue", "Cancelled"], quote: ["Draft", "Sent", "Approved", "Rejected", "Expired"] };
 const statusColors = { Unpaid: ["#ef1745", "#ff8a3d"], "Part Paid": ["#ffb23d", "#ffdf7a"], Paid: ["#2dbb91", "#6ee7b7"], Overdue: ["#b42318", "#ff7a66"], Cancelled: ["#68758e", "#a7b1c2"], Draft: ["#68758e", "#a7b1c2"], Sent: ["#0a84ff", "#64c7ff"], Approved: ["#2dbb91", "#75e6bd"], Rejected: ["#ef1745", "#ff8a3d"], Expired: ["#7c3aed", "#c4b5fd"] };
+const documentAccentDefault = "#1d3557";
+const documentColorPalette = [
+  { name: "Pantone P 99-8 U", color: "#5a527d" }, { name: "Pantone P 97-9 U", color: "#a79ab1" }, { name: "Pantone P 123-16 U", color: "#3d6f6a" }, { name: "Pantone P 123-2 U", color: "#bdd2d4" }, { name: "Pantone P 116-16 U", color: "#2f7f9f" }, { name: "Pantone P 49-14 U", color: "#a65a4e" },
+  { name: "Pantone P 17-8 U", color: "#f08e45" }, { name: "Pantone P 20-4 U", color: "#f2bd70" }, { name: "Pantone P 154-4 U", color: "#b8d095" }, { name: "Pantone P 93-2 U", color: "#c5b5cd" }, { name: "Pantone P 112-4 U", color: "#86badd" }, { name: "Pantone P 7-5 U", color: "#f7d982" },
+  { name: "Pantone 11-0601 TPX", color: "#f2f2f0" }, { name: "Pantone 1205 C", color: "#f3de8f" }, { name: "Pantone 130 C", color: "#f2a900" }, { name: "Pantone 485 C", color: "#da291c" }, { name: "Pantone 4975 C", color: "#432326" },
+  { name: "Pantone 663 C", color: "#e4e2e5" }, { name: "Pantone 691 C", color: "#eac9cc" }, { name: "Pantone 700 C", color: "#efa1b2" }, { name: "Pantone 727 C", color: "#dcb58e" }, { name: "Pantone 7515 C", color: "#c98b66" },
+  { name: "Pantone 116 C", color: "#ffcd00" }, { name: "Pantone 624 C", color: "#78a390" }, { name: "Pantone 9580 C", color: "#dce9ca" }, { name: "Pantone 162 C", color: "#f7b99a" }, { name: "Pantone 214 C", color: "#ce0f69" },
+  { name: "Pantone 7565 C", color: "#cf7721" }, { name: "Pantone 282 C", color: "#1c2b46" }, { name: "Pantone 1807 C", color: "#a9343a" }, { name: "Pantone Warm Gray 1 C", color: "#d7cec5" }, { name: "Pantone 665 C", color: "#c3b8cd" }
+];
+const documentAccentChoices = documentColorPalette.map((item) => item.color);
 function defaultStatus(type) { return type === "invoice" ? "Unpaid" : "Draft"; }
 function entryStatus(entry, type) { return entry.status || defaultStatus(type); }
 function statusSlug(status) { return status.toLowerCase().replace(/\s+/g, "-"); }
 function statusStyle(status) { const colors = statusColors[status] || ["#68758e", "#a7b1c2"]; return `--status-color:${colors[0]};--status-soft:${colors[1]};--status-shadow:${colors[0]}33`; }
 function statusSelect(type, entry) { return `<select class="status-select" data-status-type="${type}" data-status-id="${entry.number}" aria-label="${entry.number} status">${statusOptions[type].map((status) => `<option value="${status}" ${entryStatus(entry, type) === status ? "selected" : ""}>${status}</option>`).join("")}</select>`; }
 function statusSummary(entries, type) { return statusOptions[type].reduce((result, status) => ({ ...result, [status]: entries.filter((entry) => entryStatus(entry, type) === status).length }), {}); }
+function documentAccent(value) { const color = String(value || "").toLowerCase(); return documentAccentChoices.includes(color) ? color : documentAccentDefault; }
+function documentAccentName(value) { const color = documentAccent(value); return documentColorPalette.find((item) => item.color === color)?.name || "Pantone P 99-8 U"; }
+function documentAccentText(value) {
+  const hex = documentAccent(value).slice(1);
+  const r = parseInt(hex.slice(0, 2), 16), g = parseInt(hex.slice(2, 4), 16), b = parseInt(hex.slice(4, 6), 16);
+  return (r * 299 + g * 587 + b * 114) / 1000 > 165 ? "#2b1a1f" : "#fff";
+}
 const accountTypes = ["Partner Capital", "Business Income", "Expense", "Partner Withdrawal"];
 const expenseCategories = ["Welding", "Material", "Petrol", "Food", "Labour", "Office Rent", "EB Bill", "Salary", "Milk", "Poo", "Transport", "Miscellaneous"];
 const workTypes = ["Mini Hoarding", "Hoarding", "Lamp Post", "Barricade", "Wall Painting", "Vinyl", "Digital Ads"];
@@ -305,6 +322,24 @@ async function cleanSignatureImage(dataUrl) {
 function resetCompanyForm() { editingCompanyId = null; pendingCompanyLogo = ""; pendingCompanySignature = ""; $("#companyFormTitle").textContent = "Add Company"; $("#companyForm").reset(); $("#companyState").value = "Tamil Nadu"; showCompanyLogoPreview(""); showCompanySignaturePreview(""); }
 function resetPartyForm() { editingPartyId = null; $("#partyForm h2").textContent = "Add Party Details"; $("#partyForm").reset(); $("#partyState").value = "Tamil Nadu"; }
 
+function renderColorPicker(kind) {
+  const menu = $(`#${kind}ColorMenu`);
+  if (!menu) return;
+  menu.innerHTML = documentColorPalette.map((item) => `<button class="color-choice" type="button" data-document-color="${item.color}"><span class="color-choice-swatch" style="background:${item.color}"></span><span>${item.name}</span></button>`).join("");
+  setDocumentColor(kind, $(`#${kind}DocumentColor`)?.value || documentAccentDefault);
+}
+function setDocumentColor(kind, value) {
+  const color = documentAccent(value);
+  const input = $(`#${kind}DocumentColor`);
+  const control = $(`[data-color-control="${kind}"]`);
+  if (input) input.value = color;
+  if (control) {
+    control.querySelector(".document-color-swatch").style.background = color;
+    control.querySelector(".document-color-button small").textContent = documentAccentName(color);
+    control.querySelectorAll(".color-choice").forEach((button) => button.classList.toggle("selected", button.dataset.documentColor === color));
+  }
+}
+
 function clearItemRows(kind) { document.querySelectorAll(`.extra-entry-row[data-kind="${kind}"]`).forEach((row) => row.remove()); }
 function setPrimaryItem(kind, item = {}) {
   $(`#${kind}Item`).value = item.item || "";
@@ -320,6 +355,7 @@ function resetSaleForm(kind) {
   $(`#${kind}Form`).reset();
   clearItemRows(kind);
   setPrimaryItem(kind);
+  setDocumentColor(kind, documentAccentDefault);
   $(`#${kind}Form .transaction-head p`).textContent = kind === "invoice" ? "Sale #" : "Estimate #";
   $(`#${kind}Form .primary[type="submit"]`).textContent = kind === "invoice" ? "Save Invoice" : "Save Estimate";
   updateSaleCalculation(kind);
@@ -358,6 +394,7 @@ function startEditDocument(type, number) {
   $(`#${kind}CampaignFromDate`).value = entry.campaignFromDate || entry.campaignDate || "";
   $(`#${kind}CampaignToDate`).value = entry.campaignToDate || entry.campaignDate || "";
   $(`#${kind}TaxType`).value = entry.taxType || "auto";
+  setDocumentColor(kind, entry.documentColor);
   $(`#${kind}Terms`).value = entry.terms || "";
   $(`#${kind}Description`).value = entry.description || "";
   const items = entry.items?.length ? entry.items : [entry];
@@ -534,6 +571,35 @@ function draftItems(kind) {
   const extras = [...document.querySelectorAll(`.extra-entry-row[data-kind="${kind}"]`)].map((row) => ({ item: row.querySelector('[data-field="item"]').value, hsn: row.querySelector('[data-field="hsn"]').value, size: row.querySelector('[data-field="size"]').value, qty: Number(row.querySelector('[data-field="qty"]').value || 1), unit: row.querySelector('[data-field="unit"]').value, rate: Number(row.querySelector('[data-field="rate"]').value || 0), tax: Number(row.querySelector('[data-field="tax"]').value || 0) }));
   return [primary, ...extras];
 }
+function draftSaleEntry(kind) {
+  const isInvoice = kind === "invoice";
+  const items = draftItems(kind).filter((item) => item.item.trim());
+  if (!items.length) return null;
+  const first = items[0];
+  return {
+    number: editingDocument?.type === kind ? editingDocument.number : "Preview",
+    companyId: state.activeCompanyId,
+    date: $(`#${kind}Date`).value || today(),
+    poNumber: $(`#${kind}PoNumber`).value.trim(),
+    campaignFromDate: $(`#${kind}CampaignFromDate`).value,
+    campaignToDate: $(`#${kind}CampaignToDate`).value,
+    partyId: $(`#${kind}Party`).value,
+    ...first,
+    items,
+    status: defaultStatus(kind),
+    taxType: $(`#${kind}TaxType`).value,
+    documentColor: documentAccent($(`#${kind}DocumentColor`).value),
+    terms: $(`#${kind}Terms`).value.trim(),
+    description: $(`#${kind}Description`).value.trim(),
+    type: isInvoice ? "invoice" : "quote"
+  };
+}
+function previewSale(kind) {
+  const entry = draftSaleEntry(kind);
+  if (!entry) return toast("Add at least one item.");
+  if (!entry.partyId) return toast("Add a party first.");
+  showDocument(kind === "invoice" ? "invoice" : "quote", entry.number, entry);
+}
 
 function amountWords(amount) {
   const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"]; const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
@@ -557,14 +623,16 @@ function applyDocumentTemplate() {
   fitDocumentToSinglePage();
 }
 
-function showDocument(type, number) {
-  const entry = scoped(type === "invoice" ? state.invoices : state.quotes).find((record) => record.number === number); if (!entry) return;
-  openedDocument = { type, number };
+function showDocument(type, number, draftEntry = null) {
+  const entry = draftEntry || scoped(type === "invoice" ? state.invoices : state.quotes).find((record) => record.number === number); if (!entry) return;
+  openedDocument = draftEntry ? null : { type, number };
   const company = activeCompany(); const party = partyById(entry.partyId) || {}; const tax = taxAmounts(entry); const title = type === "invoice" ? "TAX INVOICE" : "ESTIMATE"; const heading = type === "invoice" ? "Invoice No." : "Estimate No."; const rateLabel = entry.unit === "Sq. Feet" ? "Rate / Sq. Ft" : "Price / Unit";
   const taxColumn = tax.type === "igst" ? `<td>${money(tax.igst)}<small>IGST ${entry.tax || 0}%</small></td>` : `<td>${money(tax.cgst)}<small>CGST ${Number(entry.tax || 0) / 2}%</small></td><td>${money(tax.sgst)}<small>SGST ${Number(entry.tax || 0) / 2}%</small></td>`;
   const taxSummary = tax.type === "igst" ? `<tr><td>IGST</td><td>${money(tax.base)}</td><td>${entry.tax || 0}%</td><td>${money(tax.igst)}</td></tr>` : `<tr><td>CGST</td><td>${money(tax.base)}</td><td>${Number(entry.tax || 0) / 2}%</td><td>${money(tax.cgst)}</td></tr><tr><td>SGST</td><td>${money(tax.base)}</td><td>${Number(entry.tax || 0) / 2}%</td><td>${money(tax.sgst)}</td></tr>`;
   const adDays = dateDiffDays(entry.campaignFromDate || entry.campaignDate, entry.campaignToDate || entry.campaignDate);
   $("#printDocumentContent").innerHTML = `<h2 class="reference-doc-title">${type === "invoice" ? "Sale" : "Estimate / Quotation"}</h2><div class="reference-company"><div class="logo-box">${company.name.slice(0, 2).toUpperCase()}</div><div><h1>${company.name}</h1>${addressHtml(company.address, true)}<p>Ph. no.: ${company.phone || "-"}</p></div></div><div class="reference-meta document-meta-two"><section><h3>Bill To:</h3><b>${party.name || "-"}</b>${addressHtml(party.address)}</section><section><h3>${type === "invoice" ? "Invoice Details" : "Estimate Details"}</h3><p>${heading} ${entry.number}</p><p>Date: ${entry.date}</p><p>State: ${party.address?.state || "-"}</p></section></div><table class="reference-items"><thead><tr><th>#</th><th>Item name</th><th>HSC/SAC</th><th>Quantity</th><th>Unit</th><th>${rateLabel}</th>${tax.type === "igst" ? "<th>IGST</th>" : "<th>CGST</th><th>SGST</th>"}<th>Amount</th></tr></thead><tbody><tr><td>1</td><td><b>${entry.item}</b><small>${entry.size || ""}</small></td><td>${entry.hsn || "-"}</td><td>${billQuantity(entry).toLocaleString("en-IN")}</td><td>${entry.unit || "-"}</td><td>${money(entry.rate)}</td>${taxColumn}<td>${money(tax.total)}</td></tr></tbody><tfoot><tr><td></td><td><b>Total</b></td><td></td><td><b>${billQuantity(entry).toLocaleString("en-IN")}</b></td><td></td><td></td>${tax.type === "igst" ? `<td><b>${money(tax.igst)}</b></td>` : `<td><b>${money(tax.cgst)}</b></td><td><b>${money(tax.sgst)}</b></td>`}<td><b>${money(tax.total)}</b></td></tr></tfoot></table><div class="reference-lower"><table><thead><tr><th>Tax type</th><th>Taxable amount</th><th>Rate</th><th>Tax amount</th></tr></thead><tbody>${taxSummary}</tbody></table><table><thead><tr><th colspan="2">Amounts</th></tr></thead><tbody><tr><td>Sub Total</td><td>${money(tax.base)}</td></tr><tr><td>Total</td><td><b>${money(tax.total)}</b></td></tr><tr><td>Balance</td><td>${money(tax.total)}</td></tr></tbody></table></div><div class="reference-words"><section><h3>Invoice Amount In Words</h3><p>${amountWords(tax.total)}</p></section><section><h3>Description</h3><p>Sale Description</p></section></div><div class="reference-footer"><section><h3>Bank Details</h3><p>Bank Name: ${company.bank.name || "-"}</p><p>Account No.: ${company.bank.accountNumber || "-"}</p><p>IFSC Code: ${company.bank.ifscCode || "-"}</p></section><section><h3>Terms and conditions</h3><p>${company.terms || "-"}</p></section><section><p>For: ${company.name}</p><div class="signature-box">${company.name.slice(0, 2).toUpperCase()}</div><b>Authorized Signatory</b></section></div>`;
+  $("#printDocumentContent").style.setProperty("--document-accent", documentAccent(entry.documentColor));
+  $("#printDocumentContent").style.setProperty("--document-accent-text", documentAccentText(entry.documentColor));
   const documentTitle = $("#printDocumentContent .reference-doc-title");
   if (documentTitle && type === "invoice") documentTitle.textContent = "Sale Invoice";
   const signatureBox = $("#printDocumentContent .signature-box");
@@ -638,6 +706,18 @@ $("#addCompany").addEventListener("click", () => { resetCompanyForm(); $("#compa
 $("#backFromCompany").addEventListener("click", () => setView("home"));
 $("#showPartyForm").addEventListener("click", () => { resetPartyForm(); $("#partyForm").classList.remove("hidden"); });
 $("#quickInvoice").addEventListener("click", () => { setView("sale"); resetSaleForm("invoice"); });
+["invoice", "quote"].forEach((kind) => {
+  $(`[data-color-toggle="${kind}"]`).addEventListener("click", () => {
+    $$(".document-color-control").forEach((control) => control.classList.toggle("open", control.dataset.colorControl === kind && !control.classList.contains("open")));
+  });
+  $(`#${kind}ColorMenu`).addEventListener("click", (event) => {
+    const button = event.target.closest("[data-document-color]");
+    if (!button) return;
+    setDocumentColor(kind, button.dataset.documentColor);
+    $(`[data-color-control="${kind}"]`).classList.remove("open");
+  });
+});
+document.addEventListener("click", (event) => { if (!event.target.closest(".document-color-control")) $$(".document-color-control").forEach((control) => control.classList.remove("open")); });
 
 $("#companyList").addEventListener("click", (event) => { const use = event.target.closest("[data-company-id]"); const edit = event.target.closest("[data-company-edit]"); if (use) { state.activeCompanyId = use.dataset.companyId; editingDocument = null; openedDocument = null; resetSaleForm("invoice"); resetSaleForm("quote"); save(); renderAll(); toast("Company changed."); } if (edit) { const company = state.companies.find((item) => item.id === edit.dataset.companyEdit); if (!company) return; editingCompanyId = company.id; pendingCompanyLogo = company.logo || ""; pendingCompanySignature = company.signature || ""; showCompanyLogoPreview(pendingCompanyLogo); showCompanySignaturePreview(pendingCompanySignature); $("#companyFormTitle").textContent = "Edit Company"; $("#companyName").value = company.name; $("#companyGstin").value = company.gstin; $("#companyPhone").value = company.phone; $("#companyAddressLine1").value = company.address.line1 || ""; $("#companyAddressLine2").value = company.address.line2 || ""; $("#companyCity").value = company.address.city || ""; $("#companyState").value = company.address.state || "Tamil Nadu"; $("#companyPincode").value = company.address.pincode || ""; $("#companyBankName").value = company.bank.name || ""; $("#companyAccountHolder").value = company.bank.accountHolder || ""; $("#companyAccountNumber").value = company.bank.accountNumber || ""; $("#companyIfscCode").value = company.bank.ifscCode || ""; $("#companyForm").classList.remove("hidden"); } });
 $("#partyList").addEventListener("click", (event) => { const remove = event.target.closest("[data-party-delete]"); if (remove) { const partyId = remove.dataset.partyDelete; const hasDocuments = [...scoped(state.invoices), ...scoped(state.quotes)].some((entry) => entry.partyId === partyId); if (hasDocuments) return toast("Delete this party's invoices and estimates first."); if (!window.confirm("Delete this party?")) return; state.parties = state.parties.filter((party) => party.id !== partyId); save(); renderAll(); return toast("Party deleted."); } const button = event.target.closest("[data-party-edit]"); if (!button) return; const party = partyById(button.dataset.partyEdit); if (!party) return; editingPartyId = party.id; $("#partyForm h2").textContent = "Edit Party"; $("#partyName").value = party.name; $("#partyPhone").value = party.phone; $("#partyGstin").value = party.gstin; $("#partyGstType").value = party.gstType || "Unregistered / Consumer"; $("#partyEmail").value = party.email || ""; $("#partyAddressLine1").value = party.address.line1 || ""; $("#partyAddressLine2").value = party.address.line2 || ""; $("#partyCity").value = party.address.city || ""; $("#partyState").value = party.address.state || "Tamil Nadu"; $("#partyPincode").value = party.address.pincode || ""; $("#partyForm").classList.remove("hidden"); });
@@ -878,6 +958,7 @@ function saveSale(kind) {
       items,
       status: existing?.status || defaultStatus(kind),
       taxType: $(`#${kind}TaxType`).value,
+      documentColor: documentAccent($(`#${kind}DocumentColor`).value),
       terms: $(`#${kind}Terms`).value.trim(),
       description: $(`#${kind}Description`).value.trim()
     };
@@ -898,6 +979,8 @@ function saveSale(kind) {
   };
 }
 $("#invoiceForm").addEventListener("submit", saveSale("invoice")); $("#quoteForm").addEventListener("submit", saveSale("quote"));
+$("#invoicePreview").addEventListener("click", () => previewSale("invoice"));
+$("#quotePreview").addEventListener("click", () => previewSale("quote"));
 $("#invoiceForm .entry-total button").addEventListener("click", () => addItemRow("invoice"));
 $("#quoteForm .entry-total button").addEventListener("click", () => addItemRow("quote"));
 $("#settingsForm").addEventListener("submit", (event) => {
@@ -980,8 +1063,10 @@ function downloadWord(download = true) {
   const logo = companyParts[0]?.innerHTML || "";
   const companyInfo = companyParts[1]?.innerHTML || "";
   const title = source.querySelector(".reference-doc-title")?.outerHTML || "";
+  const accent = documentAccent(source.style.getPropertyValue("--document-accent"));
+  const accentText = documentAccentText(accent);
   const html = `<!doctype html><html><head><meta charset="utf-8"><style>
-    @page{size:A4;margin:8mm}body{font-family:Arial,sans-serif;color:#30333d;font-size:10pt}.word-sheet{width:100%}table{width:100%;border-collapse:collapse;table-layout:fixed}td,th{border:1px solid #777;padding:6px;vertical-align:top}.company td{border:1px solid #777}.company td:last-child{text-align:right}.logo-box{width:70px;height:70px;background:#fff;text-align:center;vertical-align:middle}.signature-box{width:136px;height:78px;margin:8px auto 4px;background:transparent;border:0;text-align:center;vertical-align:top;overflow:hidden}.document-logo{width:70px;height:70px;object-fit:contain}.document-signature{width:128px;max-height:70px;object-fit:contain;filter:contrast(1.18) saturate(1.18)}.reference-doc-title{text-align:center;font-size:17pt;margin:0 0 10px}.reference-meta h3,.reference-words h3,.reference-footer h3{margin:-6px -6px 7px;padding:6px;background:#928add;color:#fff;font-size:10pt}.reference-items th,.reference-lower th{background:#928add;color:#fff;font-size:9pt}.reference-items td,.reference-items th,.reference-lower td,.reference-lower th{border:1px solid #777;padding:6px;text-align:right}.reference-items td:nth-child(2),.reference-items th:nth-child(2),.reference-lower td:first-child,.reference-lower th:first-child{text-align:left}.reference-items small{display:block;margin-top:4px}.word-grid td{width:33.33%}.word-two td{width:50%}.word-footer td{width:33.33%}.word-footer td:last-child{text-align:center}.word-footer p,.reference-meta p{margin:4px 0;white-space:pre-line}.reference-lower{width:100%}.reference-lower td{border:0;padding:0}.reference-lower table{width:100%}
+    @page{size:A4;margin:8mm}body{font-family:Arial,sans-serif;color:#30333d;font-size:10pt}.word-sheet{width:100%}table{width:100%;border-collapse:collapse;table-layout:fixed}td,th{border:1px solid #777;padding:6px;vertical-align:top}.company td{border:1px solid #777}.company td:last-child{text-align:right}.logo-box{width:70px;height:70px;background:#fff;text-align:center;vertical-align:middle}.signature-box{width:136px;height:78px;margin:8px auto 4px;background:transparent;border:0;text-align:center;vertical-align:top;overflow:hidden}.document-logo{width:70px;height:70px;object-fit:contain}.document-signature{width:128px;max-height:70px;object-fit:contain;filter:contrast(1.18) saturate(1.18)}.reference-doc-title{text-align:center;font-size:17pt;margin:0 0 10px;background:${accent};color:${accentText};padding:6px}.reference-meta h3,.reference-words h3,.reference-footer h3{margin:-6px -6px 7px;padding:6px;background:${accent};color:${accentText};font-size:10pt}.reference-items th,.reference-lower th{background:${accent};color:${accentText};font-size:9pt}.reference-items td,.reference-items th,.reference-lower td,.reference-lower th{border:1px solid #777;padding:6px;text-align:right}.reference-items td:nth-child(2),.reference-items th:nth-child(2),.reference-lower td:first-child,.reference-lower th:first-child{text-align:left}.reference-items small{display:block;margin-top:4px}.word-grid td{width:33.33%}.word-two td{width:50%}.word-footer td{width:33.33%}.word-footer td:last-child{text-align:center}.word-footer p,.reference-meta p{margin:4px 0;white-space:pre-line}.reference-lower{width:100%}.reference-lower td{border:0;padding:0}.reference-lower table{width:100%}
   </style></head><body><div class="word-sheet">${title}<table class="company"><tr><td style="width:18%">${logo}</td><td>${companyInfo}</td></tr></table><table class="word-grid"><tr>${meta.map((value) => `<td>${value}</td>`).join("")}</tr></table>${source.querySelector(".reference-items")?.outerHTML || ""}<table class="reference-lower"><tr>${lower.map((value) => `<td>${value}</td>`).join("")}</tr></table><table class="word-two"><tr>${words.map((value) => `<td>${value}</td>`).join("")}</tr></table><table class="word-footer"><tr>${footer.map((value) => `<td>${value}</td>`).join("")}</tr></table></div></body></html>`;
   const blob = new Blob([html], { type: "application/msword" });
   if (download) downloadBlob(blob, documentFilename("doc"));
@@ -1008,6 +1093,7 @@ $("#logoutButton").addEventListener("click", () => { sessionStorage.removeItem("
 $("#cloudSyncButton").addEventListener("click", syncCloudNow);
 $("#cloudSyncNow").addEventListener("click", syncCloudNow);
 
+["invoice", "quote"].forEach(renderColorPicker);
 renderAll();
 renderSession();
 setSidebarCollapsed(localStorage.getItem("tbd-sidebar-collapsed") === "true");
